@@ -2,6 +2,9 @@
   (:use :cl :fiveam)
   (:import-from :amoove/cat 
       :make-cat
+      :parse-cat-abc
+      :serialize-cat-abc
+      :make-reduce-result
   )
 )
 (in-package :amoove/test/cat)
@@ -9,13 +12,13 @@
 
 (defparameter *cat-abc-tokenize-list*
   (list (list*  "Sm"
-                (list (list 'amoove/CAT::ATOM (amoove/cat::make-cat :name "Sm")))
+                (list (list 'amoove/CAT::ATOM (make-cat :name "Sm")))
         )
         (list*  "A/B" 
                 (list
-                    (list 'amoove/CAT::ATOM (amoove/cat::make-cat :name "A"))
+                    (list 'amoove/CAT::ATOM (make-cat :name "A"))
                     (list 'amoove/CAT::SLASH-RIGHT #\/)
-                    (list 'amoove/CAT::ATOM (amoove/cat::make-cat :name "B"))
+                    (list 'amoove/CAT::ATOM (make-cat :name "B"))
                 )
         )
   )
@@ -44,15 +47,15 @@
 )
 
 (defparameter *cat-abc-list*
-  (list (list* "Sm" (amoove/cat::make-cat :name "Sm") )
+  (list (list* "Sm" (make-cat :name "Sm") )
         (list* "A/B/C" ;; C → B → A
-                (amoove/cat::make-cat 
+                (make-cat 
                     :name "/"
-                    :args (list (amoove/cat::make-cat :name "C")
-                                (amoove/cat::make-cat
+                    :args (list (make-cat :name "C")
+                                (make-cat
                                     :name "/"
-                                    :args (list (amoove/cat::make-cat :name "B")
-                                                (amoove/cat::make-cat :name "A")
+                                    :args (list (make-cat :name "B")
+                                                (make-cat :name "A")
                                           )
                                 )
                           )
@@ -63,9 +66,7 @@
 
 (test parse-cat-abc
     (loop for test-data in *cat-abc-list* do 
-        (let      ( (parsed-result 
-                      (amoove/cat::parse-cat-abc (car test-data)) 
-                    )
+        (let      ( (parsed-result (parse-cat-abc (car test-data)) )
                   )
             (is (equalp parsed-result (cdr test-data)))
         )
@@ -82,11 +83,14 @@
 (test print-cat-abc
     (loop for test-data in *cat-serialize-abc-list* do 
         (let      ( (printed-result 
-                      (amoove/cat::serialize-cat-abc 
-                          (amoove/cat::parse-cat-abc (car test-data))
-                      )
+                      (serialize-cat-abc (parse-cat-abc (car test-data)) )
                     )
                   )
+            (is (string= printed-result (cdr test-data)))
+        )
+    )
+)
+
             (is (string= printed-result (cdr test-data)))
         )
     )
