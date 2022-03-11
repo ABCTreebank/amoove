@@ -91,7 +91,70 @@
     )
 )
 
-            (is (string= printed-result (cdr test-data)))
-        )
+(defparameter *reduce-result-list*
+  (list 
+    (list* "<" "<" (make-reduce-result :reduction "<" :level 0))
+    (list* "<0" "<" (make-reduce-result :reduction "<" :level 0))
+    (list* "<2" "<2" (make-reduce-result :reduction "<" :level 2))
+    (list* ">" ">" (make-reduce-result :reduction ">" :level 0))
+    (list* ">0" ">" (make-reduce-result :reduction ">" :level 0))
+    (list* ">4" ">4" (make-reduce-result :reduction ">" :level 4))
+    (list* "|>23" "|>23"  (make-reduce-result 
+                              :reduction "|>"
+                              :level 23
+                          )
     )
+  )  
+)
+(test parse-reduce-result
+  (loop for test-data in *reduce-result-list* do
+    (trivia::match test-data
+      ( (list* raw raw-normalized parsed)
+        (is (equalp (amoove/cat::parse-reduce-result raw)
+                    parsed
+            )
+        )
+        (is (string= raw-normalized
+                     (amoove/cat::serialize-reduce-result parsed )
+            )
+        )
+      )
+    )
+  )
+)
+
+(defparameter *cat-reduce-abc-list*
+  (list (list* (list "A" "A\\B") (list "B" "<") )
+        (list* (list "A" "B|A") (list "B" "|<") )
+        (list* (list "A|B" "B") (list "A" "|>") )
+        (list* (list "A/B" "B") (list "A" ">") )
+        (list* (list "A\\B" "B\\C") (list "A\\C" "<1") )
+        (list* (list "A/B" "B/C") (list "A/C" ">1") )
+        (list* (list "A/B" "B/C/D") (list "A/C/D" ">2") )
+        (list* (list "D\\C\\B" "B\\A") (list "D\\C\\A" "<2") )
+        (list* (list "A|B" "B|C") (list nil nil))
+  )
+)
+(test reduce-abc
+  (loop for test-data in *cat-reduce-abc-list* do
+    (trivia::match test-data 
+        ( (list* (list cat1 cat2) 
+                 (list result-cat result-detail)
+          )
+          (is (equalp (multiple-value-list 
+                        (amoove/cat::reduce-cat 
+                            (parse-cat-abc cat1)
+                            (parse-cat-abc cat2)
+                        )
+                      )
+                      (list 
+                        (parse-cat-abc result-cat)
+                        (amoove/cat::parse-reduce-result result-detail)
+                      )
+              )
+          )
+        )
+        ( otherwise (error "Illegat test data"))
+    )
+  )
 )

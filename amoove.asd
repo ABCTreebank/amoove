@@ -6,6 +6,7 @@
   :depends-on (
     :fset
     :trivia
+    :trivia.ppcre
     :yacc
   )
   :components (

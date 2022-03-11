@@ -1,9 +1,11 @@
 (defpackage :amoove/cat
   (:use :cl)
   (:export 
-    cat
-    make-cat
+    cat make-cat
+    serialize-cat-abc
     parse-cat-abc
+    reduce-result make-reduce-result
+    serialize-reduce-result parse-reduce-result
   )
 )
 
@@ -16,6 +18,208 @@
 )
 
 (defparameter *serialize-cat-abc-memo* (make-hash-table :test #'equal))
+
+(defstruct (reduce-result (:conc-name get-))
+  (reduction "" :type string :read-only t)
+  (level 0 :type integer :read-only t)
+)
+
+(defun serialize-reduce-result (item)
+  (trivia::match item
+    ( (reduce-result :reduction name :level level)
+      (if (= 0 level)
+          name
+          (format nil "~a~d" name level)
+      )
+    )
+    ( otherwise "FAIL")
+  )
+)
+
+(defun parse-reduce-result (str)
+  (trivia::match str
+    ( (trivia.ppcre::ppcre "^([<>\\|]+)([0-9]+)?" name level)
+      (make-reduce-result :reduction name
+                          :level  (if (> (length level) 0)
+                                      (parse-integer level)
+                                      0
+                                  )
+      )
+    )
+    ( otherwise nil )
+  )
+)
+
+(defparameter *reduce-cat-memo* (make-hash-table :test #'equal))
+(defun reduce-cat (cat-left cat-right)
+  (multiple-value-bind (val exists) (gethash '(cat-left cat-right) *reduce-cat-memo*)
+    (cond 
+      ( exists (values-list val) )
+      ( t 
+        (let            ( (result (list nil nil))
+                        )
+          (trivia::match (list cat-left cat-right)
+            ;; ant1\conseq1 ant2\conseq2
+            ( (list (cat :name "\\" :args (list ant1 conseq1))
+                    (cat :name "\\" :args (list ant2 conseq2))
+              )
+              (cond 
+                ;; (ant1\conseq1) == ant2
+                ;; i.e. cat-left cat-left\conseq2
+                ( (equalp cat-left ant2)
+                  ;; → conseq2, <0
+                  (setq result  (list conseq2
+                                      (make-reduce-result
+                                        :reduction "<"
+                                        :level 0)
+                                )
+                  )
+                )
+                ;; otherwise
+                ( t
+                  ;; check whether [conseq1 ant2\conseq2] is deducable as <n
+                  (multiple-value-bind  (result-cat detail)
+                                        (reduce-cat conseq1 cat-right)
+                    (trivia::match detail
+                      ;; if it is
+                      ;; i.e. [conseq1 ant2\conseq2] ⇝ result-cat, <[level]
+                      ( (reduce-result :reduction "<" :level level)
+                        ;; then:
+                        ;; [ant1\conseq1 ant2\conseq2]
+                        ;; ⇝ ant1\result-cat, <[level + 1]
+                        (setq result  (list (make-cat
+                                              :name "\\" 
+                                              :args (list ant1 result-cat)
+                                            )
+                                            (make-reduce-result
+                                                :reduction "<"
+                                                :level (1+ level)
+                                            )
+                                      )
+                        )
+                      )
+                      ( otherwise (setq result (list nil nil)) )
+                    )
+                  )
+                )
+              )
+            )
+            
+            ( (list (cat :name "/" :args (list ant1 conseq1))
+                    (cat :name "/" :args (list ant2 conseq2))
+              )
+              (cond 
+                ( (equalp ant1 cat-right)
+                  (setq result  (list conseq1
+                                      (make-reduce-result
+                                          :reduction ">"
+                                          :level 0
+                                      )
+                                )
+                  )
+                )
+                ( t 
+                  (multiple-value-bind  (result-cat detail)
+                                        (reduce-cat cat-left conseq2)
+                    (trivia::match detail
+                      ( (reduce-result :reduction ">" :level level)
+                        (setq result  (list (make-cat
+                                              :name "/" 
+                                              :args (list ant2 result-cat)
+                                            )
+                                            (make-reduce-result
+                                                :reduction ">"
+                                                :level (1+ level)
+                                            )
+                                      )
+                        )
+                      )
+                      ( otherwise (setq result (list nil nil)) )
+                    )
+                  )
+                )
+              )
+            )
+            
+            ;; conseq1/ant1 cat-right
+            ;; | ant1 == cat-right
+            ( (trivia::guard  (list (cat :name "/" :args (list ant1 conseq1))
+                                    (cat )
+                              )
+                              (equalp ant1 cat-right)
+              )
+              ;; → conseq1, >0
+              (setq result  (list conseq1
+                                  (make-reduce-result
+                                      :reduction ">"
+                                      :level 0
+                                  )
+                            )
+              )
+            )
+            
+            ;; cat-left ant2\conseq2
+            ;; | cat-left == ant2
+            ( (trivia::guard  (list (cat )
+                                    (cat :name "\\" :args (list ant2 conseq2))
+                              )
+                              (equalp cat-left ant2)
+              )
+              ;; → conseq2, <0
+              (setq result  (list conseq2
+                                  (make-reduce-result
+                                      :reduction "<"
+                                      :level 0
+                                  )
+                            )
+              )
+            )
+            
+            ;; conseq1|ant1 cat-right
+            ;; | ant1 == cat-right
+            ( (trivia::guard  (list (cat :name "|" :args (list ant1 conseq1))
+                                    (cat )
+                              )
+                              (equalp ant1 cat-right)
+              )
+              ;; → conseq1, |>0
+              (setq result  (list conseq1
+                                  (make-reduce-result
+                                      :reduction "|>"
+                                      :level 0
+                                  )
+                            )
+              )
+            )
+            
+            ;; cat-left conseq2|ant2
+            ;; | cat-left == ant2
+            ( (trivia::guard  (list (cat )
+                                    (cat :name "|" :args (list ant2 conseq2))
+                              )
+                              (equalp cat-left ant2)
+              )
+              ;; → conseq2, |<0
+              (setq result  (list conseq2
+                                  (make-reduce-result
+                                      :reduction "|<"
+                                      :level 0
+                                  )
+                            )
+              )
+            )
+          ) ;; end trivia::match
+          
+          ;; cache the result
+          (setf (gethash '(cat-left cat-right) *serialize-cat-abc-memo*) result)
+          
+          ;; return the result
+          (values-list result)
+        ) ;; end let result
+      )
+    ) ;; end cond
+  )
+)
 
 (defun serialize-cat-abc (input)
   (multiple-value-bind (val exists) (gethash input *serialize-cat-abc-memo*)
@@ -94,7 +298,6 @@
     ) ;; end cond
   ) ;; end multiple-values-bind
 )
-
 
 (defun tokenize-cat-abc (input)
   (let*           ( (input-length (length input))
