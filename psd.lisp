@@ -495,34 +495,39 @@
                             &key
                             (output-stream *standard-output*)
                             (id nil)
+                            (prefix "")
+                            (postfix "
+")
                           )
-            (let          ( (,v-stack (list ,v-tree))
-                            (,v-current-node nil)
-                          )
-              (if (stringp id) (format output-stream "( ") )
-              (loop
-                (setq ,v-current-node (pop ,v-stack))
-                (trivia::match ,v-current-node
-                  ( nil (return ))
-                  ;; if it is a subtree
-                  ( (type cons)
-                    (push ")" ,v-stack)
-                    (setq ,v-stack  (append (.sep-by-space ,v-current-node)
-                                            ,v-stack
-                                    )
-                    )
-                    (push "(" ,v-stack)
-                  )
-                  ( otherwise
-                    (format output-stream
-                            "~a" 
-                            (funcall ,converter ,v-current-node)
-                    )
-                  )
+        (format output-stream prefix)
+        (let          ( (,v-stack (list ,v-tree))
+                        (,v-current-node nil)
+                      )
+          (if (stringp id) (format output-stream "( ") )
+          (loop
+            (setq ,v-current-node (pop ,v-stack))
+            (trivia::match ,v-current-node
+              ( nil (return ))
+              ;; if it is a subtree
+              ( (type cons)
+                (push ")" ,v-stack)
+                (setq ,v-stack  (append (.sep-by-space ,v-current-node)
+                                        ,v-stack
+                                )
                 )
-              ) ;; end loop
-              (if (stringp id) (format output-stream " (ID ~a))" id) )
-            ) ;; end let ,v-stack ,v-currecnt-node
+                (push "(" ,v-stack)
+              )
+              ( otherwise
+                (format output-stream
+                        "~a" 
+                        (funcall ,converter ,v-current-node)
+                )
+              )
+            )
+          ) ;; end loop
+          (if (stringp id) (format output-stream " (ID ~a))" id) )
+        ) ;; end let ,v-stack ,v-currecnt-node
+        (format output-stream postfix)
       ) ;; end lambda, end qquote
   ) ;; let v-*
 )
