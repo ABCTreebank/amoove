@@ -3,6 +3,8 @@
   (:export
     get-tokenizer
     get-parser
+    alter-nodes
+    get-pprinter
   )
 )
 
@@ -331,17 +333,6 @@
 ;;   )
 ;; )
 
-;; (defun alter-nodes (f tree)
-;;   (let    ( (iter-node (traverse-dfs tree))
-;;             (p-node nil)
-;;             )
-;;     (loop
-;;       (setq p-node (iter-node))
-;;       (if (null p-node) (return))
-;;       (setf p-node (f p-node))
-;;     )
-;;   )
-;; )
 
 (defun split-ID ( tree 
                   &key (pred (lambda (i) (string= i "ID")))
@@ -359,34 +350,99 @@
   )
 )
 
-(defun alter-nonterminal-nodes (f tree)
-  (trivia::match tree
-      ( (cons (trivia.level2::place node) body)
-        (cond
-            ( (listp node)
-              (alter-nonterminal-nodes f node)
-            )
-            ( t 
-              (setf node (funcall f node))
-            )
-        )
-        (loop for child in body do
-          (cond 
-            ( (consp child)
-              (alter-nonterminal-nodes f child)
-            )
-            ( t
-              ;; do nothing
-              nil
-            )
-          )
-        )
-      )
-      ( otherwise
-        ;; do nothing
-        nil
-      )
-   )
+(defmacro alter-nodes ( &key 
+                        (f-nonterminal nil)
+                        (f-terminal nil)
+                      )
+  (let*               ( (v-subtree (gensym "subtree_"))
+                        (v-node (gensym "node_"))
+                        (v-child (gensym "child_"))
+                        (v-rest (gensym "rest"))
+                        (v-children (gensym "children_"))
+                        (v-child-pointer (gensym "child-pointer_"))
+                        (v-routine (gensym "routine_"))
+                        (snip-nonterminal
+                          (if (null f-nonterminal)
+                              '( nil )
+                              ;; else
+                              `( 
+                                  (setf ,v-node (funcall ,f-nonterminal ,v-node))
+                              )
+                          )
+                        )
+                        (snip-terminal
+                          (if (null f-terminal)
+                              '( nil )
+                              ;; else
+                              `(
+                                (setf ,v-child (funcall ,f-terminal ,v-child)) 
+                              )
+                          ) 
+                        )
+                      )
+  `(labels 
+      ( (,v-routine (,v-subtree)
+          (let  ( (,v-child-pointer nil)
+                )
+            (trivia::match ,v-subtree
+              ;; if ,v-subtree is a tree which has more than one child
+              ( (trivia::guard  (cons (trivia::place ,v-node) ,v-children)
+                                (and (consp ,v-children) )
+                )
+                (cond 
+                  ;; if ,v-subtree's node (,v-node) is not vacuous
+                  ( (not (consp ,v-node))
+                    ;; alter ,v-node with ,f-nonterminal
+                    ,@snip-nonterminal
+                    ;; the remainder will be its children
+                    (setq ,v-child-pointer ,v-children)
+                  )
+                  ;; no substantial node
+                  ;; all elements including v-node are children
+                  ( t 
+                    (setq ,v-child-pointer ,v-subtree) 
+                  )
+                )
+                
+                ;; loop on the children
+                (loop
+                  (trivia::match ,v-child-pointer
+                    ( (cons (trivia::place ,v-child) ,v-rest)
+                      (cond
+                        ;; if the currecnt child is a subtree
+                        ( (consp ,v-child)
+                          (,v-routine ,v-child)
+                        )
+                        ;; otherwise: the child is a terminal node
+                        ( t
+                          ,@snip-terminal
+                        )
+                      )
+                    )
+                    ( otherwise (return ))
+                  )
+                  ;; to the next child
+                  (setq ,v-child-pointer (cdr ,v-child-pointer))
+                ) ;; end loop
+              ) ;; end match condition on ,v-subtree
+              
+              ( (cons (trivia::place ,v-child) nil) 
+                ,@snip-terminal
+              )
+              
+              ;; otherwise: ,v-subtree is not a tree
+              ( otherwise
+                (error "Invalid type. A tree (a cons cell) is required.")
+              )
+            ) ;; end trivia::match
+          ) ;; end let
+        ) ;; end lambda def: routine
+      ) ;; end labels func def
+      
+      ;; return
+      #',v-routine
+    ) ;; end labels, qquote
+  ) ;; end meta let
 )
 
 (defun .sep-by-space (li)

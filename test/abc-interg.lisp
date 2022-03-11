@@ -18,6 +18,12 @@
                         )
                     )
                     
+                    ;; the annot converter on tree nodes
+                    (alter-nodes (amoove/psd::alter-nodes 
+                                    :f-nonterminal parse-annot
+                                  )
+                    )
+                    
                     ;; the tree parser
                     (get-tree-raw 
                       (amoove/psd:get-parser 
@@ -44,10 +50,7 @@
             (setq tree-raw (funcall get-tree-raw ))
             (if (null tree-raw) (return ))
             (multiple-value-bind (id tree) (amoove/psd::split-ID tree-raw) 
-              (amoove/psd::alter-nonterminal-nodes
-                parse-annot
-                tree
-              )
+              (funcall alter-nodes tree)
               (funcall pprint-tree tree :output-stream *error-output* :id id)
               (format *error-output* "~%")
             )

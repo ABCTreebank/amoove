@@ -29,7 +29,7 @@
       )
 )
 
-(defun generate-tree-abstract ()
+(defun generate-lists-for-alter-nodes-nonterm ()
   (list
     (cons (list 1 (list 1 3 3) (list 1 3 (list 1 3)))
           (list 4 (list 4 3 3) (list 4 3 (list 4 3)))
@@ -40,15 +40,18 @@
   )
 )
 
-(test alter-nonterminal-nodes
-  (loop for test-data 
-        in (generate-tree-abstract )
-        do
-    (amoove/psd::alter-nonterminal-nodes
-        (lambda (i) (if (= i 1) 4) )
-        (car test-data)
-    )
-    (is (equalp (car test-data) (cdr test-data) ) 
+(test alter-nodes-nonterm
+  (let            ( (alter
+                      (amoove/psd::alter-nodes 
+                        :f-nonterminal (lambda (i) (if (= i 1) 4) )
+                      )
+                    )
+                  )
+    (loop for test-data 
+          in (generate-lists-for-alter-nodes-nonterm )
+          do
+      (funcall alter (car test-data))
+      (is (equalp (car test-data) (cdr test-data) ) )
     )
   )
 )
