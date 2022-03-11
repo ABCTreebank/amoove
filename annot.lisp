@@ -3,7 +3,11 @@
   (:export
     annot
     make-annot
+    get-cat
+    get-feats
+    annot-p
     make-parser
+    serialize-annot
   )
 )
 
