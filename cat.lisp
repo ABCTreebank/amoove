@@ -14,7 +14,7 @@
 (defstruct (cat (:conc-name get-))
   (name "⊥" :type string)
   (args '())
-  (feats (fset-user::empty-map) )
+  (feats (fset-user::empty-map ) )
 )
 
 (defparameter *serialize-cat-abc-memo* (make-hash-table :test #'equal))
@@ -24,7 +24,7 @@
   (level 0 :type integer :read-only t)
 )
 
-(defun serialize-reduce-result (item)
+(function-cache::defcached serialize-reduce-result (item)
   (trivia::match item
     ( (reduce-result :reduction name :level level)
       (if (= 0 level)
@@ -36,7 +36,7 @@
   )
 )
 
-(defun parse-reduce-result (str)
+(function-cache::defcached parse-reduce-result (str)
   (trivia::match str
     ( (trivia.ppcre::ppcre "^([<>\\|]+)([0-9]+)?" name level)
       (make-reduce-result :reduction name
@@ -50,253 +50,221 @@
   )
 )
 
-(defparameter *reduce-cat-memo* (make-hash-table :test #'equal))
-(defun reduce-cat (cat-left cat-right)
-  (multiple-value-bind (val exists) (gethash '(cat-left cat-right) *reduce-cat-memo*)
-    (cond 
-      ( exists (values-list val) )
-      ( t 
-        (let            ( (result (list nil nil))
-                        )
-          (trivia::match (list cat-left cat-right)
-            ;; ant1\conseq1 ant2\conseq2
-            ( (list (cat :name "\\" :args (list ant1 conseq1))
-                    (cat :name "\\" :args (list ant2 conseq2))
-              )
-              (cond 
-                ;; (ant1\conseq1) == ant2
-                ;; i.e. cat-left cat-left\conseq2
-                ( (equalp cat-left ant2)
-                  ;; → conseq2, <0
-                  (setq result  (list conseq2
-                                      (make-reduce-result
-                                        :reduction "<"
-                                        :level 0)
-                                )
-                  )
-                )
-                ;; otherwise
-                ( t
-                  ;; check whether [conseq1 ant2\conseq2] is deducable as <n
-                  (multiple-value-bind  (result-cat detail)
-                                        (reduce-cat conseq1 cat-right)
-                    (trivia::match detail
-                      ;; if it is
-                      ;; i.e. [conseq1 ant2\conseq2] ⇝ result-cat, <[level]
-                      ( (reduce-result :reduction "<" :level level)
-                        ;; then:
-                        ;; [ant1\conseq1 ant2\conseq2]
-                        ;; ⇝ ant1\result-cat, <[level + 1]
-                        (setq result  (list (make-cat
-                                              :name "\\" 
-                                              :args (list ant1 result-cat)
-                                            )
-                                            (make-reduce-result
-                                                :reduction "<"
-                                                :level (1+ level)
-                                            )
-                                      )
-                        )
-                      )
-                      ( otherwise (setq result (list nil nil)) )
-                    )
-                  )
-                )
-              )
-            )
-            
-            ( (list (cat :name "/" :args (list ant1 conseq1))
-                    (cat :name "/" :args (list ant2 conseq2))
-              )
-              (cond 
-                ( (equalp ant1 cat-right)
-                  (setq result  (list conseq1
-                                      (make-reduce-result
-                                          :reduction ">"
-                                          :level 0
-                                      )
-                                )
-                  )
-                )
-                ( t 
-                  (multiple-value-bind  (result-cat detail)
-                                        (reduce-cat cat-left conseq2)
-                    (trivia::match detail
-                      ( (reduce-result :reduction ">" :level level)
-                        (setq result  (list (make-cat
-                                              :name "/" 
-                                              :args (list ant2 result-cat)
-                                            )
-                                            (make-reduce-result
-                                                :reduction ">"
-                                                :level (1+ level)
-                                            )
-                                      )
-                        )
-                      )
-                      ( otherwise (setq result (list nil nil)) )
-                    )
-                  )
-                )
-              )
-            )
-            
-            ;; conseq1/ant1 cat-right
-            ;; | ant1 == cat-right
-            ( (trivia::guard  (list (cat :name "/" :args (list ant1 conseq1))
-                                    (cat )
-                              )
-                              (equalp ant1 cat-right)
-              )
-              ;; → conseq1, >0
-              (setq result  (list conseq1
-                                  (make-reduce-result
-                                      :reduction ">"
-                                      :level 0
-                                  )
-                            )
-              )
-            )
-            
-            ;; cat-left ant2\conseq2
-            ;; | cat-left == ant2
-            ( (trivia::guard  (list (cat )
-                                    (cat :name "\\" :args (list ant2 conseq2))
-                              )
-                              (equalp cat-left ant2)
-              )
-              ;; → conseq2, <0
-              (setq result  (list conseq2
-                                  (make-reduce-result
-                                      :reduction "<"
-                                      :level 0
-                                  )
-                            )
-              )
-            )
-            
-            ;; conseq1|ant1 cat-right
-            ;; | ant1 == cat-right
-            ( (trivia::guard  (list (cat :name "|" :args (list ant1 conseq1))
-                                    (cat )
-                              )
-                              (equalp ant1 cat-right)
-              )
-              ;; → conseq1, |>0
-              (setq result  (list conseq1
-                                  (make-reduce-result
-                                      :reduction "|>"
-                                      :level 0
-                                  )
-                            )
-              )
-            )
-            
-            ;; cat-left conseq2|ant2
-            ;; | cat-left == ant2
-            ( (trivia::guard  (list (cat )
-                                    (cat :name "|" :args (list ant2 conseq2))
-                              )
-                              (equalp cat-left ant2)
-              )
-              ;; → conseq2, |<0
-              (setq result  (list conseq2
-                                  (make-reduce-result
-                                      :reduction "|<"
-                                      :level 0
-                                  )
-                            )
-              )
-            )
-          ) ;; end trivia::match
-          
-          ;; cache the result
-          (setf (gethash '(cat-left cat-right) *serialize-cat-abc-memo*) result)
-          
-          ;; return the result
-          (values-list result)
-        ) ;; end let result
+(function-cache::defcached reduce-cat (cat-left cat-right)
+  (trivia::match (list cat-left cat-right)
+    ;; ant1\conseq1 ant2\conseq2
+    ( (list (cat :name "\\" :args (list ant1 conseq1))
+            (cat :name "\\" :args (list ant2 conseq2))
       )
-    ) ;; end cond
-  )
-)
-
-(defun serialize-cat-abc (input)
-  (multiple-value-bind (val exists) (gethash input *serialize-cat-abc-memo*)
-    (cond
-      ;; if it is memoized: return it
-      ( exists val )
-      ;; otherwise: pprint
-      ( t 
-        (let*         ( (buf  (make-array 300
-                                          :element-type 'character
-                                          :fill-pointer 0
-                                          :adjustable t
-                              )
-                        )
-                        (stack (list input))
-                        (pointer nil)
-                      )
-            (loop 
-              (setq pointer (pop stack))
-              (trivia::match pointer
-                ( nil (return ) )
-                ;; if pointer is a left-functor
-                ( (cat :name "\\" 
-                       :args (list ant conseq) 
-                       :feats fset:empty-map
+      (cond 
+        ;; (ant1\conseq1) == ant2
+        ;; i.e. cat-left cat-left\conseq2
+        ( (equalp cat-left ant2)
+          ;; → conseq2, <0
+          (values conseq2 
+                  (make-reduce-result
+                    :reduction "<"
+                    :level 0
                   )
-                  (push #\> stack)
-                  (push conseq stack)
-                  (push #\\ stack)
-                  (push ant stack)
-                  (push #\< stack) ;; <ant/conseq>
-                )
-                ;; if pointer is a functor of other types
-                ( (cat :name name
-                       :args (list ant conseq) 
-                       :feats fset:empty-map
+          )
+        )
+        ;; otherwise
+        ( t
+          ;; check whether [conseq1 ant2\conseq2] is deducable as <n
+          (multiple-value-bind  (result-cat detail)
+                                (reduce-cat conseq1 cat-right)
+            (trivia::match detail
+              ;; if it is
+              ;; i.e. [conseq1 ant2\conseq2] ⇝ result-cat, <[level]
+              ( (reduce-result :reduction "<" :level level)
+                ;; then:
+                ;; [ant1\conseq1 ant2\conseq2]
+                ;; ⇝ ant1\result-cat, <[level + 1]
+                 (values  (make-cat
+                            :name "\\" 
+                            :args (list ant1 result-cat)
+                          )
+                          (make-reduce-result
+                              :reduction "<"
+                              :level (1+ level)
+                          )
                   )
-                  (push #\> stack)
-                  (push ant stack)
-                  (push name stack)
-                  (push conseq stack)
-                  (push #\< stack) ;; <conseq/ant>
-                )
-                ;; if pointer is atomic
-                ( (cat  :name name
-                        :args '()
-                        :feats feats
-                  )
-                  (fset-user::do-map (key val feats)
-                    (cond
-                      ( (eq val t) 
-                        (push (format nil "[~a]" key) stack)
-                      )
-                      ( t
-                        (push (format nil "[~a=~a]" key val) stack)
-                      )
-                    )
-                  )
-                  (push name stack)
-                )
-                ( (type string)
-                  (loop :for ch :across pointer do (vector-push-extend ch buf))
-                )
-                ( (type character)
-                  (vector-push-extend pointer buf)
-                )
-                ( otherwise (error "Not implemented") )
               )
+              ( otherwise (values nil nil))
             )
-            (let  ( (result (format nil "~a" buf) ) )
-                  (setf (gethash input *serialize-cat-abc-memo*) result)
-                  result
-            )
+          )
         )
       )
-    ) ;; end cond
-  ) ;; end multiple-values-bind
+    )
+    
+    ( (list (cat :name "/" :args (list ant1 conseq1))
+            (cat :name "/" :args (list ant2 conseq2))
+      )
+      (cond 
+        ( (equalp ant1 cat-right)
+          (values conseq1
+                  (make-reduce-result
+                      :reduction ">"
+                      :level 0
+                  )
+          )
+        )
+        ( t 
+          (multiple-value-bind  (result-cat detail)
+                                (reduce-cat cat-left conseq2)
+            (trivia::match detail
+              ( (reduce-result :reduction ">" :level level)
+                (values (make-cat
+                        :name "/" 
+                        :args (list ant2 result-cat)
+                        )
+                        (make-reduce-result
+                            :reduction ">"
+                            :level (1+ level)
+                        )
+                )
+              )
+              ( otherwise (values nil nil))
+            )
+          )
+        )
+      )
+    )
+    
+    ;; conseq1/ant1 cat-right
+    ;; | ant1 == cat-right
+    ( (trivia::guard  (list (cat :name "/" :args (list ant1 conseq1))
+                            (cat )
+                      )
+                      (equalp ant1 cat-right)
+      )
+      ;; → conseq1, >0
+      (values conseq1
+              (make-reduce-result
+                  :reduction ">"
+                  :level 0
+              )
+      )
+    )
+    
+    ;; cat-left ant2\conseq2
+    ;; | cat-left == ant2
+    ( (trivia::guard  (list (cat )
+                            (cat :name "\\" :args (list ant2 conseq2))
+                      )
+                      (equalp cat-left ant2)
+      )
+      ;; → conseq2, <0
+      (values conseq2
+              (make-reduce-result
+                  :reduction "<"
+                  :level 0
+              )
+      )
+    )
+    
+    ;; conseq1|ant1 cat-right
+    ;; | ant1 == cat-right
+    ( (trivia::guard  (list (cat :name "|" :args (list ant1 conseq1))
+                            (cat )
+                      )
+                      (equalp ant1 cat-right)
+      )
+      ;; → conseq1, |>0
+      (values conseq1
+              (make-reduce-result
+                  :reduction "|>"
+                  :level 0
+              )
+      )
+    )
+    
+    ;; cat-left conseq2|ant2
+    ;; | cat-left == ant2
+    ( (trivia::guard  (list (cat )
+                            (cat :name "|" :args (list ant2 conseq2))
+                      )
+                      (equalp cat-left ant2)
+      )
+      ;; → conseq2, |<0
+      (values conseq2
+              (make-reduce-result
+                :reduction "|<"
+                :level 0
+              )
+      )
+    )
+    
+    (otherwise (values nil nil))
+  ) ;; end trivia::match
+)
+
+(function-cache::defcached serialize-cat-abc (input)
+  (let*         ( (buf  (make-array 300
+                                    :element-type 'character
+                                    :fill-pointer 0
+                                    :adjustable t
+                        )
+                  )
+                  (stack (list input))
+                  (pointer nil)
+                )
+    (loop 
+      (setq pointer (pop stack))
+      (trivia::match pointer
+        ( nil (return ) )
+        ;; if pointer is a left-functor
+        ( (cat :name "\\" 
+                :args (list ant conseq) 
+                :feats fset:empty-map
+          )
+          (push #\> stack)
+          (push conseq stack)
+          (push #\\ stack)
+          (push ant stack)
+          (push #\< stack) ;; <ant/conseq>
+        )
+        ;; if pointer is a functor of other types
+        ( (cat :name name
+                :args (list ant conseq) 
+                :feats fset:empty-map
+          )
+          (push #\> stack)
+          (push ant stack)
+          (push name stack)
+          (push conseq stack)
+          (push #\< stack) ;; <conseq/ant>
+        )
+        ;; if pointer is atomic
+        ( (cat  :name name
+                :args '()
+                :feats feats
+          )
+          (fset-user::do-map (key val feats)
+            (cond
+              ( (eq val t) 
+                (push (format nil "[~a]" key) stack)
+              )
+              ( t
+                (push (format nil "[~a=~a]" key val) stack)
+              )
+            )
+          )
+          (push name stack)
+        )
+        ( (type string)
+          (loop :for ch :across pointer do (vector-push-extend ch buf))
+        )
+        ( (type character)
+          (vector-push-extend pointer buf)
+        )
+        ( otherwise (error "Not implemented") )
+      )
+    )
+  
+    ;; return
+    (format nil "~a" buf)
+  )
 )
 
 (defun tokenize-cat-abc (input)
@@ -427,37 +395,25 @@
   )
 )
 
-(defparameter *parse-cat-abc-memo* (make-hash-table :test #'equal))
-
-(defun parse-cat-abc (input)
-  (multiple-value-bind (val exists) (gethash input *parse-cat-abc-memo*)
-    (cond
-      ;; if it is memoized: return it
-      ( exists val )
-      
-      ;; if input is null or empty:
-      ( (or (equal input "") (null input))
-        ;; return nil
-        nil
-      )
-      
-      ;; if input is a string: parse
-      ( (stringp input)
-        (let*           ( (result-raw 
-                              (yacc::parse-with-lexer (tokenize-cat-abc input)
-                                                      *parser-cat-abc*
-                              )
-                          )
-                          (result (from-parsed-raw result-raw))
-                        )
-          (setf (gethash input *parse-cat-abc-memo*) result)
-          ;; return
-          result
-        )
-      )
-      
-      ;; otherwise: error
-      ( t (error "Unparsable type"))
+(function-cache::defcached parse-cat-abc (input)
+  (cond
+    ;; if input is null or empty:
+    ( (or (equal input "") (null input))
+      ;; return nil
+      nil
     )
+    
+    ;; if input is a string: parse
+    ( (stringp input)
+      (from-parsed-raw 
+         (yacc::parse-with-lexer
+           (tokenize-cat-abc input)
+           *parser-cat-abc*
+         )
+      )
+    )
+    
+    ;; otherwise: error
+    ( t (error "Unparsable type"))
   )
 )

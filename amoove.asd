@@ -8,6 +8,7 @@
     :trivia
     :trivia.ppcre
     :yacc
+    :function-cache
   )
   :components (
     (:file "cat")

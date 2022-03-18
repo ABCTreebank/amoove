@@ -97,8 +97,6 @@
   )
 )
 
-(defparameter *parse-cat-abc-memo* (make-hash-table :test #'equal))
-
 (defun serialize-annot
         ( item 
           &key  ( print-cat 
