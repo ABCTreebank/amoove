@@ -1,10 +1,10 @@
 (defpackage :amoove/annot
   (:use :cl)
   (:export
-    annot
+    annot 
+    cat feats
+    get-cat get-feats
     make-annot
-    get-cat
-    get-feats
     annot-p
     make-parser
     serialize-annot
