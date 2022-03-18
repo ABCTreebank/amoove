@@ -1,6 +1,10 @@
 (defpackage :amoove/cat
   (:use :cl)
   (:export 
+    cat
+    name args feats 
+    get-name -getargs get-feats
+    make-cat
     unify
     serialize-cat-abc
     parse-cat-abc
