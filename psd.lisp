@@ -352,7 +352,10 @@
                   (loop for child in stack do
                     (push child content)
                   )
-                  (return (values id content))
+                  (if (= (length content) 1)
+                      (return (values id (car content)))
+                      (return (values id content))
+                  )
                 )  
                 ( t (return (values nil tree)) )
               )
