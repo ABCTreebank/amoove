@@ -1,7 +1,7 @@
 (defpackage :amoove/cat
   (:use :cl)
   (:export 
-    cat make-cat
+    unify
     serialize-cat-abc
     parse-cat-abc
     reduce-result make-reduce-result
@@ -17,7 +17,65 @@
   (feats (fset-user::empty-map ) )
 )
 
-(defparameter *serialize-cat-abc-memo* (make-hash-table :test #'equal))
+
+(defun .unify-feats (feats1 feats2)
+  (let          ( (res-map feats1))
+    (fset-user::do-map (key2 val2 feats2)
+      (multiple-value-bind  (ret is_successful) 
+                            (fset-user::lookup res-map key2)
+        (cond
+          ;; if the key is not specified in map1 or has a nil value
+          ( (or (null ret) (null is_successful))
+            (fset-user::adjoinf res-map key2 val2)
+          )
+          
+          ;; TODO: merge submaps
+          
+          ;: otherwise: abort and return nil
+          ( t
+            (setq res-map nil)
+            (return )
+          )
+        )
+      )
+    )
+    res-map
+  )
+)
+
+(function-cache::defcached unify (cat1 cat2)
+  (trivia::match cat1
+    ( (cat :name name :args args1 :feats feats1)
+      (let ( (len-args (length args1)))
+        (trivia::match cat2
+          ( (trivia::guard 
+              (cat :name name :args args2 :feats feats2)
+              (= len-args (length args2) )
+            )
+            ;; unification of children
+            (let  ( (args-unified (remove nil (mapcar #'unify args1 args2) ) )
+                    (feats-unified (.unify-feats feats1 feats2))
+                  )
+              (cond
+                ;; if unifications of args and feats are successful
+                ( (and (= len-args (length args-unified))
+                       feats-unified
+                  )
+                  ;; return a new object
+                  (make-cat :name name :args args-unified :feats feats-unified)
+                )
+                
+                ;; otherwise
+                ( t nil )
+              )
+            )
+          )
+        )
+      )
+    )
+    ( otherwise nil )
+  )
+)
 
 (defstruct (reduce-result (:conc-name get-))
   (reduction "" :type string :read-only t)
