@@ -5,6 +5,7 @@
     split-ID
     alter-nodes
     get-pprinter
+    filter-out-comment
   )
 )
 
@@ -530,4 +531,31 @@
         (format output-stream postfix)
       ) ;; end lambda, end qquote
   ) ;; let v-*
+)
+
+(defun  filter-out-comments
+        ( tree 
+          &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
+        )
+  (trivia::match tree 
+    ( (cons head tail)
+      (trivia::match head
+        ( (trivia::guard  (cons node _)
+                          (funcall node-pred node)
+          )
+          (let  ( (result (filter-out-comments tail :node-pred node-pred))
+                )
+            (cond 
+              ( (= (length result) 1) (car result) )
+              ( t result)
+            )
+          )
+        )
+        ( otherwise
+          (cons head (filter-out-comments tail :node-pred node-pred) )
+        )
+      )
+    )
+    ( otherwise tree)
+  )
 )
