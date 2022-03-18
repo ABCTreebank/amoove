@@ -339,14 +339,6 @@
                   &key (pred (lambda (i) (string= i "ID")))
                 )
   (trivia::match tree
-    ;; ( (trivia::guard  (list _ 
-    ;;                       content 
-    ;;                       (list id-cat id)
-    ;;                   )
-    ;;                   (funcall pred id-cat)
-    ;;   )
-    ;;   (values id content)
-    ;; )
     ( (cons _ children)
       (let  ( (pointer children)
               (stack '())
