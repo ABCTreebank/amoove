@@ -407,6 +407,11 @@
           (let  ( (,v-child-pointer nil)
                 )
             (trivia::match ,v-subtree
+              ;; NOTE: there should not be such a complication
+              ;;        of classifying subtree types like this.
+              ;; whether a node is a child or a head must be pre-determined after parsing.
+              ;; TODO: fix it
+                           
               ;; if ,v-subtree is a tree which has more than one child
               ( (trivia::guard  (cons (trivia::place ,v-node) ,v-children)
                                 (and (consp ,v-children) )
@@ -448,7 +453,11 @@
                 ) ;; end loop
               ) ;; end match condition on ,v-subtree
               
-              ( (cons (trivia::place ,v-child) nil) 
+              ;; (NODE )
+              ;; treated as a terminal
+              ( (trivia::guard  (list (trivia::place ,v-child )) 
+                                (not (consp ,v-child))
+                )
                 ,@snip-terminal
               )
               
