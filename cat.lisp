@@ -5,6 +5,9 @@
     name args feats 
     get-name -getargs get-feats
     make-cat
+    uncurry-cat
+    ;; trivia patterns
+    cat-str cat-adjunct cat-uncurried
     unify
     serialize-cat-abc
     parse-cat-abc
@@ -21,6 +24,78 @@
   (feats (fset-user::empty-map ) )
 )
 
+(trivia::defpattern cat-str (str unified)
+  (let  ( (item (gensym "item_"))
+          (cat-parsed (parse-cat-abc str))
+        )
+    `(trivia::guard1 ,item (cat-p ,item)
+        (unify ,item ,cat-parsed)
+        (trivia::guard1 ,unified t)
+    )
+  )
+)
+
+(trivia::defpattern cat-adjunct (dir radical)
+  `(cat :cat ,dir :args (list radical radical) )
+)
+
+(function-cache::defcached uncurry-cat (item &key (name-p nil))
+  (cond 
+    ( (stringp name-p)
+      (trivia::match item
+        ( (trivia::guard
+              (cat  :name name
+                    :args (list ant conseq)
+              )
+              (string= name-p name)
+          )
+          (multiple-value-bind  (args conseq)
+                                (uncurry-cat conseq :name-p name-p)
+            (values (cons ant args) conseq)
+          )
+        )
+        ( otherwise (values '() item) )
+      )
+    )
+    ( (null name-p)
+      (trivia::match item 
+        ( (cat  :name name
+                :args (list ant conseq)
+          )
+          (multiple-value-bind  (args conseq)
+                                (uncurry-cat conseq :name-p name)
+            (values (cons ant args) conseq)
+          )
+        )
+        ( otherwise (values '() item) )
+      )
+    )
+    ( t 
+      (error (format nil "Illegal value for parameter `name-p`: ~a" name-p))
+    )
+  )
+)
+
+(trivia::defpattern cat-uncurried (functor args conseq)
+  (let    ( (v-item (gensym "item_ ")) 
+            (v-item-uncurried (gensym "item-uncurried_")) 
+          )
+    `(trivia::guard1  ,v-item
+                      (and  (cat-p ,v-item) 
+                            (= (length (get-args ,v-item)) 2)
+                      )
+        (multiple-value-list (uncurry-cat ,v-item) )
+        (trivia::guard1 ,v-item-uncurried t
+            (or (null (car ,v-item-uncurried))
+                (get-name ,v-item)
+            )
+            ,functor
+            (car ,v-item-uncurried) ,args
+            (cadr ,v-item-uncurried) ,conseq
+        )
+    )
+  )
+)
 
 (defun .unify-feats (feats1 feats2)
   (let          ( (res-map feats1))
