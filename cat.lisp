@@ -19,12 +19,15 @@
 (in-package :amoove/cat)
 
 (defstruct (cat (:conc-name get-))
+  "Represent an ABC category."
   (name "⊥" :type string)
   (args '())
   (feats (fset-user::empty-map ) )
 )
 
 (trivia::defpattern cat-str (str unified)
+  "Match a CAT with an string representation of another ABC category STR.
+  UNIFIED stores the result of the unification of the two."
   (let  ( (item (gensym "item_"))
           (cat-parsed (parse-cat-abc str))
         )
@@ -36,10 +39,20 @@
 )
 
 (trivia::defpattern cat-adjunct (dir radical)
+  "Match an adjunct category.
+   DIR matches its functor type.
+   RADICAL matches its categorial radical."
   `(cat :cat ,dir :args (list radical radical) )
 )
 
 (function-cache::defcached uncurry-cat (item &key (name-p nil))
+  "List the antecedents of a (possibly multiple) functor category ITEM.
+  
+  NAME-P specifies the functor (`/`, `\\`, or `|`) the function should exclusively match with.
+  For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields `E`, `D`, and `<C\\<A/B>>` (the search stops at the `\\` functor).
+
+  If NAME-P is NIL, any functor categories will make a match.
+  "
   (cond 
     ( (stringp name-p)
       (trivia::match item
@@ -77,6 +90,14 @@
 )
 
 (trivia::defpattern cat-uncurried (functor args conseq)
+  "Match a CAT with its functors destructed.
+   FUNCTOR stores the functor type.
+   ARGS, as a list, stores the functor categorie(s).
+   CONSEQ stores the consequent category.
+
+   Example: `A/B/C/D/E` makes a match.
+    FUNCTOR is `/`, ARGS is `'(E, D, C, B)`, and CONSEQ is `A`.
+  "
   (let    ( (v-item (gensym "item_ ")) 
             (v-item-uncurried (gensym "item-uncurried_")) 
           )
@@ -123,6 +144,8 @@
 )
 
 (function-cache::defcached unify (cat1 cat2)
+  "Unify two categories CAT1 and CAT2.
+   In case of failure, NIL is returned."
   (trivia::match cat1
     ( (cat :name name :args args1 :feats feats1)
       (let ( (len-args (length args1)))
@@ -157,6 +180,7 @@
 )
 
 (defstruct (reduce-result (:conc-name get-))
+  "Store a detail result of REDUCE-CAT."
   (reduction "" :type string :read-only t)
   (level 0 :type integer :read-only t)
 )
@@ -188,6 +212,11 @@
 )
 
 (function-cache::defcached reduce-cat (cat-left cat-right)
+  "Try an →-elimnation or a function composition on CAT-LEFT and CAT-RIGHT.
+   The first returning value is the resulting category. NIL in case of failure.
+   The second returning value is detailed information about the rule that is applied.
+  "
+
   (trivia::match (list cat-left cat-right)
     ;; ant1\conseq1 ant2\conseq2
     ( (list (cat :name "\\" :args (list ant1 conseq1))
@@ -337,6 +366,7 @@
 )
 
 (function-cache::defcached serialize-cat-abc (input)
+  "Print INPUT, a CAT."
   (let*         ( (buf  (make-array 300
                                     :element-type 'character
                                     :fill-pointer 0
@@ -533,6 +563,7 @@
 )
 
 (function-cache::defcached parse-cat-abc (input)
+  "Parse INPUT to yield a CAT."
   (cond
     ;; if input is null or empty:
     ( (or (equal input "") (null input))

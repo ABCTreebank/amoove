@@ -14,11 +14,16 @@
 (in-package :amoove/annot)
 
 (defstruct (annot (:conc-name get-))
+  "Represent a meta-tag of ABC non-terminal categories."
   (cat nil)
   (feats (fset-user::empty-map))
 )
 
 (defmacro make-parser (&key (cat-parser nil))
+  "Generate a parser of ANNOT on the fly.
+   CAT-PARSER specifies the relevant parser for slot CAT.
+   If it is NIL, raw strings are used for CAT.
+  "
   (let*     ( (v-cursor-sharp (gensym "cursor-sharp_") )
               (v-cursor-eq (gensym "cursor-eq_") )
               (v-cursor-end (gensym "cursor-end_"))
@@ -103,6 +108,8 @@
                     (lambda (i) (format nil "~a" i) )
                 )
         )
+  "Print ITEM, an ANNOT.
+   PRINT-CAT specifies the printer of slot CAT."
   (cond 
     ( (annot-p item)
       (let      ( (buf (make-array 300

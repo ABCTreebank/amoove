@@ -284,6 +284,9 @@
 )
 
 (defun get-parser (strm &key (buf-size 100))
+  "Generate an ABC tree parser on the fly.
+  BUF-SIZE is the size of the buffer that holds nodes. 
+  "
   ;; (declare strm stream)
   ;; (declare buf-size int)
   (get-parser-via-tokenizer (get-tokenizer strm :buf-size buf-size))
@@ -338,6 +341,11 @@
 (defun split-ID ( tree 
                   &key (pred (lambda (i) (string= i "ID")))
                 )
+  "Extract an ID from TREE.
+   PRED is a predicate that distinguishes 'ID' nodes from others.
+   The first returning value is the ID (NIL if not found).
+   The second value is the remaining tree (TREE if ID is not found).
+  "
   (trivia::match tree
     ( (cons _ children)
       (let  ( (pointer children)
@@ -379,6 +387,15 @@
                         (f-nonterminal nil)
                         (f-terminal nil)
                       )
+  "Generate a destructive tree node modifier on the fly.
+   F-NONTERMINAL is a function that modifies non-terminal nodes.
+   F-TERMINAL is a function that modifiers terminal nodes.
+   If they are set to NIL, no modification will take place.
+
+   A non-terminal node is the first element `A` 
+   of a non-singleton list `'(A _ ...)` which is itself not a CONS.
+   A terminal-node is either a non- CONS or
+   the unique element of a singleton list `'(A )` which is not a CONS. "
   (let*               ( (v-subtree (gensym "subtree_"))
                         (v-node (gensym "node_"))
                         (v-child (gensym "child_"))
@@ -492,6 +509,9 @@
 
 ;; defmacroにするメリットがなさそう？
 (defmacro get-pprinter (converter)
+  "Get a pretty printer of a tree on the fly.
+   CONVERTER speficies the pretty printer of nodes.
+  "
   (let      ( (v-tree (gensym "tree_"))
               (v-current-node (gensym "v-current-node_"))
               (v-stack (gensym "stack_"))
@@ -541,6 +561,7 @@
         ( tree 
           &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
         )
+  "Filter out 'COMMENT' nodes from TREE."
   (trivia::match tree 
     ( (cons head tail)
       (trivia::match head
