@@ -39,11 +39,14 @@
   "Match a CAT with an string representation of another ABC category STR.
   UNIFIED stores the result of the unification of the two."
   (let  ( (item (gensym "item_"))
+          (item-unified (gensym "item-unified_"))
           (cat-parsed (parse-cat-abc str))
         )
     `(trivia::guard1 ,item (cat-p ,item)
         (unify ,item ,cat-parsed)
-        (trivia::guard1 ,unified (not (null ,unified)))
+        (trivia::guard1 ,item-unified (not (null ,item-unified))
+            ,item-unified ,unified
+        )
     )
   )
 )
@@ -52,7 +55,10 @@
   "Match an adjunct category.
    DIR matches its functor type.
    RADICAL matches its categorial radical."
-  `(cat :cat ,dir :args (list radical radical) )
+  `(trivia::guard 
+      (cat (name ,dir) (args (list r1 r2) ) )
+      (equalp r1 r2)
+  )
 )
 
 (function-cache::defcached uncurry-cat (item &key (name-p nil))
