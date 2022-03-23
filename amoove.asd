@@ -42,3 +42,22 @@
       (symbol-call :fiveam :run! :amoove)
   )
 )
+
+(defsystem "amoove/to-lambda"
+  :description "Semantic conversion of the ABC Treebank"
+  :version "0.0.0.0"
+  :author "Nori Hayashi <net@hayashi-lin.net>"
+  :license "to be determined"
+  :depends-on (
+    :fset
+    :trivia
+    :trivia.ppcre
+    :amoove
+  )
+  :components (
+    (:file "exec/to-lambda")
+  )
+  :build-operation "program-op"
+  :build-pathname "bin/abc2lambda"
+  :entry-point "amoove/to-lambda:main"
+)
