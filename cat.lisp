@@ -17,12 +17,22 @@
 )
 
 (in-package :amoove/cat)
-
+  
 (defstruct (cat (:conc-name get-))
   "Represent an ABC category."
   (name "⊥" :type string)
   (args '())
   (feats (fset-user::empty-map ) )
+)
+
+(defmethod make-load-form
+      ( (item cat) &optional environment )
+      (declare (ignore environment))
+  `(amoove/cat::make-cat
+      :name ,(get-name item)
+      :args (list ,@(get-args item) )
+      :feats ,(get-feats item)
+  )
 )
 
 (trivia::defpattern cat-str (str unified)
