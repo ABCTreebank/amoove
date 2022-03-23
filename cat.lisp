@@ -43,7 +43,7 @@
         )
     `(trivia::guard1 ,item (cat-p ,item)
         (unify ,item ,cat-parsed)
-        (trivia::guard1 ,unified t)
+        (trivia::guard1 ,unified (not (null ,unified)))
     )
   )
 )
@@ -162,12 +162,14 @@ If NAME-P is NIL, any functor categories will make a match."
   "Unify two categories CAT1 and CAT2.
    In case of failure, NIL is returned."
   (trivia::match cat1
-    ( (cat :name name :args args1 :feats feats1)
+    ( (cat :name name1 :args args1 :feats feats1)
       (let ( (len-args (length args1)))
         (trivia::match cat2
           ( (trivia::guard 
-              (cat :name name :args args2 :feats feats2)
-              (= len-args (length args2) )
+              (cat :name name2 :args args2 :feats feats2)
+              (and (string= name1 name2)
+                   (= len-args (length args2) )
+              )
             )
             ;; unification of children
             (let  ( (args-unified (remove nil (mapcar #'unify args1 args2) ) )
@@ -179,7 +181,7 @@ If NAME-P is NIL, any functor categories will make a match."
                        feats-unified
                   )
                   ;; return a new object
-                  (make-cat :name name :args args-unified :feats feats-unified)
+                  (make-cat :name name1 :args args-unified :feats feats-unified)
                 )
                 
                 ;; otherwise
