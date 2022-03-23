@@ -47,12 +47,15 @@
 
 (function-cache::defcached uncurry-cat (item &key (name-p nil))
   "List the antecedents of a (possibly multiple) functor category ITEM.
-  
-  NAME-P specifies the functor (`/`, `\\`, or `|`) the function should exclusively match with.
-  For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields `E`, `D`, and `<C\\<A/B>>` (the search stops at the `\\` functor).
 
-  If NAME-P is NIL, any functor categories will make a match.
-  "
+The primary returning value is, if any, the outmost functor name.
+The secondary returning value is a list of functor antecedents.
+The tertiary value is the consequence.
+
+NAME-P specifies the functor (`/`, `\\`, or `|`) the function should exclusively match with.
+For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields '(E D) and <C\\<A/B>> (the search stops at the `\\` functor).
+
+If NAME-P is NIL, any functor categories will make a match."
   (cond 
     ( (stringp name-p)
       (trivia::match item
@@ -64,10 +67,10 @@
           )
           (multiple-value-bind  (args conseq)
                                 (uncurry-cat conseq :name-p name-p)
-            (values (cons ant args) conseq)
+            (values name (cons ant args) conseq)
           )
         )
-        ( otherwise (values '() item) )
+        ( otherwise (values nil '() item) )
       )
     )
     ( (null name-p)
@@ -77,10 +80,10 @@
           )
           (multiple-value-bind  (args conseq)
                                 (uncurry-cat conseq :name-p name)
-            (values (cons ant args) conseq)
+            (values name (cons ant args) conseq)
           )
         )
-        ( otherwise (values '() item) )
+        ( otherwise (values nil '() item) )
       )
     )
     ( t 
@@ -98,21 +101,23 @@
    Example: `A/B/C/D/E` makes a match.
     FUNCTOR is `/`, ARGS is `'(E, D, C, B)`, and CONSEQ is `A`.
   "
-  (let    ( (v-item (gensym "item_ ")) 
+  (let    ( (v-item (gensym "item_ "))
             (v-item-uncurried (gensym "item-uncurried_")) 
           )
-    `(trivia::guard1  ,v-item
-                      (and  (cat-p ,v-item) 
-                            (= (length (get-args ,v-item)) 2)
+    `(trivia::guard1  ,v-item (cat-p ,v-item)
+        (multiple-value-list
+            (uncurry-cat 
+              ,v-item
+              :name-p (if (= (length (get-args ,v-item)) 2)
+                          (get-name ,v-item)
+                          nil
                       )
-        (multiple-value-list (uncurry-cat ,v-item) )
-        (trivia::guard1 ,v-item-uncurried t
-            (or (null (car ,v-item-uncurried))
-                (get-name ,v-item)
             )
-            ,functor
-            (car ,v-item-uncurried) ,args
-            (cadr ,v-item-uncurried) ,conseq
+        )
+        (trivia::guard1 ,v-item-uncurried t
+            (car ,v-item-uncurried) ,functor
+            (cadr ,v-item-uncurried) ,args
+            (caddr ,v-item-uncurried) ,conseq
         )
     )
   )
