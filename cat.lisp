@@ -220,6 +220,11 @@ If NAME-P is NIL, any functor categories will make a match."
   )
 )
 
+(defmethod print-object ((o reduce-result) s)
+  (format s "<REDUCE-RESULT RULE: '~a' >" (serialize-reduce-result o))
+)
+
+
 (function-cache::defcached parse-reduce-result (str)
   (trivia::match str
     ( (trivia.ppcre::ppcre "^([<>\\|]+)([0-9]+)?" name level)
