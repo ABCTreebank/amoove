@@ -507,54 +507,48 @@
   )
 )
 
-;; defmacroにするメリットがなさそう？
-(defmacro get-pprinter (converter)
-  "Get a pretty printer of a tree on the fly.
-   CONVERTER speficies the pretty printer of nodes.
-  "
-  (let      ( (v-tree (gensym "tree_"))
-              (v-current-node (gensym "v-current-node_"))
-              (v-stack (gensym "stack_"))
-            )
-    `(lambda              ( ,v-tree
-                            &key
-                            (output-stream *standard-output*)
-                            (id nil)
-                            (prefix "")
-                            (postfix "
+(defun pprint-tree  ( tree 
+                      &key
+                      (converter (lambda (i) i) )
+                      (output-stream *standard-output*)
+                      (id nil)
+                      (prefix "")
+                      (postfix "
 ")
-                          )
-        (format output-stream prefix)
-        (let          ( (,v-stack (list ,v-tree))
-                        (,v-current-node nil)
-                      )
-          (if (stringp id) (format output-stream "( ") )
-          (loop
-            (setq ,v-current-node (pop ,v-stack))
-            (trivia::match ,v-current-node
-              ( nil (return ))
-              ;; if it is a subtree
-              ( (type cons)
-                (push ")" ,v-stack)
-                (setq ,v-stack  (append (.sep-by-space ,v-current-node)
-                                        ,v-stack
-                                )
+                    )
+  "Pretty print a tree.
+
+CONVERTER speficies how to pretty print nodes.
+ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with that ID.
+PREFIX specifices a string that is put before the tree.
+POSTFIX specifies a string that is put after the tree."
+  (format output-stream prefix)
+  
+  (let          ( (stack (list tree))
+                  (current-node nil)
                 )
-                (push "(" ,v-stack)
-              )
-              ( otherwise
-                (format output-stream
-                        "~a" 
-                        (funcall ,converter ,v-current-node)
-                )
-              )
-            )
-          ) ;; end loop
-          (if (stringp id) (format output-stream " (ID ~a))" id) )
-        ) ;; end let ,v-stack ,v-currecnt-node
-        (format output-stream postfix)
-      ) ;; end lambda, end qquote
-  ) ;; let v-*
+    (if (stringp id) (format output-stream "( ") )
+    
+    (loop
+      (setq current-node (pop stack))
+      (trivia::match current-node
+        ( nil (return ))
+        ;; if it is a subtree
+        ( (type cons)
+          (push ")" stack)
+          (setq stack (append (.sep-by-space current-node) stack ) )
+          (push "(" stack)
+        )
+        ( otherwise
+          (format output-stream "~a" (funcall converter current-node) )
+        )
+      )
+    ) ;; end loop
+    
+    (if (stringp id) (format output-stream " (ID ~a))" id) )
+  ) ;; end let stack, current-node
+  
+  (format output-stream postfix)
 )
 
 (defun  filter-out-comments

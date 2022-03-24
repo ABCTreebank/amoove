@@ -15,12 +15,8 @@
   )
 )
 
-(defparameter *pprint-abc-tree*
-  (amoove/psd::get-pprinter
-    (lambda (i) 
-            (✑::serialize-annot i :print-cat '🐈::serialize-cat-abc )
-    )
-  )
+(defun pprint-abc-node (item)
+  (✑::serialize-annot item :print-cat '🐈::serialize-cat-abc )
 )
 
 (defun parse-subcommands (args)
@@ -146,10 +142,9 @@
               (setq tree (funcall actions tree))
               
               ;; print out the result
-              (funcall  *pprint-abc-tree*
-                        tree
-                        :output-stream *standard-output*
-                        :id id
+              (amoove/psd::pprint-tree tree
+                :converter #'pprint-abc-node
+                :id id
               )
             )
           )
