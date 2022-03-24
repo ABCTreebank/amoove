@@ -54,8 +54,16 @@
     :trivia.ppcre
     :amoove
   )
+  :serial t
   :components (
-    (:file "exec/to-lambda")
+    (:module "exec/to-lambda"
+      :components (
+        (:file "base")
+        (:file "to-lambda")
+        (:file "reduce")
+        (:file "cli")
+      )
+    )
   )
   :build-operation "program-op"
   :build-pathname "bin/abc2lambda"

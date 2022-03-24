@@ -1,81 +1,4 @@
-(defpackage :amoove/to-lambda
-  (:use :cl)
-  (:local-nicknames
-    (:✑ :amoove/annot)
-    (:🐈 :amoove/cat)
-  )
-  (:import-from :amoove/annot 
-      :annot
-  )
-  (:import-from :amoove/cat
-      :cat-str
-      :cat-adjunct
-      :cat-uncurried
-      :reduce-cat
-      :reduce-result
-  )
-  (:import-from :trivia
-      :match :guard
-  )
-  (:export :main)
-)
-
 (in-package :amoove/to-lambda)
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :fset)
-  (defmethod make-load-form ( (item fset::wb-map) &optional environment )
-                            (declare (ignore environment))
-    (let* ( (map-list '()) 
-          )
-      (fset-user::do-map (key val item)
-         (push (list key val) map-list)
-      )
-      `(fset-user::map ,@map-list )
-    )
-  )
-  
-  (trivia::in-optimizer :balland2006)
-)
-
-(defparameter *iter-abc-tree-raw*
-  (amoove/psd::get-parser *standard-input*)
-)
-
-(defparameter *parse-abc-cat-annoted*
-  (✑::make-parser :cat-parser 🐈::parse-cat-abc)
-)
-
-;; NOTE: Destructive!
-(defparameter *alter-parse-abc-tree-nodes* 
-  (amoove/psd::alter-nodes 
-    :f-nonterminal *parse-abc-cat-annoted*
-  )
-)
-
-(defparameter *pprint-abc-tree*
-  (amoove/psd::get-pprinter
-    (lambda (i) 
-            (✑::serialize-annot i :print-cat '🐈::serialize-cat-abc )
-    )
-  )
-)
-
-(defstruct (func-holder (:conc-name get-))
-  (func (lambda (i) i) :type function)
-  (argn 1 :type integer)
-  (desc "IDENTITY FUNCTION" :type string)
-)
-
-(defmethod print-object ((o func-holder) s)
-  (format s "<FUNC-HOLDER ARITY: ~d, DESC: ~a>" (get-argn o) (get-desc o))
-)
-
-(trivia::defpattern punc ()
-  `(trivia.ppcre::ppcre
-      "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
-  )
-)
 
 (defun to-lambda (item)
   (match item
@@ -126,6 +49,7 @@
     
     ;; the fallback lexical rule
     ( (guard (list _ w) (stringp w) ) w )
+    ( (guard (list _ w) (symbolp w) ) w )
     
     ;; ============
     ;; Binary branching rules
@@ -263,99 +187,5 @@
     ;; Non-tree
     ;; ============
     ( otherwise item )
-  )
-)
-
-(defun reduce-lambda (item)
-  (match item
-    ( (type list)
-      (let  ( (item-reduced (mapcar #'reduce-lambda item))
-            )
-        (match item-reduced
-          ( (cons (func-holder func argn) children)
-            (let          ( (arg-len (length children)) )
-              (cond 
-                ( (< arg-len argn)
-                  (make-func-holder
-                    :func (lambda (&rest arg-rest) 
-                                  (apply func (append children arg-rest))
-                          )
-                    :argn (- argn arg-len)
-                  )
-                )
-                ( (= arg-len argn)
-                  (reduce-lambda (apply func children))
-                )
-                ( t
-                  (cons (reduce-lambda
-                            (apply func (subseq children 0 argn))
-                        )
-                        (subseq children argn)
-                  )
-                )
-              )
-            )
-          )
-          
-          ( (list only-child) only-child )
-          
-          ( otherwise item-reduced )
-        )
-      )
-    )
-    
-    ( otherwise item )
-  )
-)
-
-(defun main ()
-  (let      ( (tree-raw nil)
-            ) 
-    (loop
-      ;; fetch the next tree
-      (setq tree-raw (funcall *iter-abc-tree-raw*))
-      
-      (cond 
-        ;; if tree is nil
-        ( (null tree-raw)
-          ;; hit the end of the stream
-          ;; end the loop
-          (return )
-        )
-        
-        ;; if tree is indeed a tree
-        ( (consp tree-raw)
-          (multiple-value-bind  (id tree)
-                                (amoove/psd::split-ID tree-raw)
-            (setq tree (amoove/psd::filter-out-comments tree) )
-            (funcall *alter-parse-abc-tree-nodes* tree)
-            (setq tree (to-lambda tree))
-            (cond 
-              ( (member "--trace" sb-ext:*posix-argv* :test #'string=)
-                (funcall  *pprint-abc-tree*
-                      tree
-                      :output-stream *standard-output*
-                      :id id
-                 )
-              )
-
-              ( t 
-                (setq tree (reduce-lambda tree))
-                (funcall  *pprint-abc-tree*
-                          tree
-                          :output-stream *standard-output*
-                          :id id
-                )
-              )
-            )
-          )
-        )
-        
-        ;; otherwise: error
-        ( t 
-          (error (format nil "Illegal input: ~a~%" tree-raw) )
-        )
-      )
-    )
   )
 )
