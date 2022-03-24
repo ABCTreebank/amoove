@@ -53,6 +53,7 @@
     :trivia
     :trivia.ppcre
     :amoove
+    :unix-opts
   )
   :serial t
   :components (
