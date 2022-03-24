@@ -68,6 +68,10 @@
         ( "relax"
           ;; do nothing 
         )
+      
+        ( otherwise 
+          (error (format nil "FATAL: illegal subcommand: ~a~%" a))  
+        )
       )
     )
     
