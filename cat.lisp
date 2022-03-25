@@ -462,6 +462,10 @@ If NAME-P is NIL, any functor categories will make a match."
   )
 )
 
+(defmethod print-object ((o cat) s)
+  (format s "<AMOOVE CAT ~a >" (serialize-cat-abc o))
+)
+
 (defun tokenize-cat-abc (input)
   (let*           ( (input-length (length input))
                     (pointer-begin 0)
