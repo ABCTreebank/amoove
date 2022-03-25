@@ -4,7 +4,7 @@
     get-parser
     split-ID
     alter-nodes
-    get-pprinter
+    pprint-tree
     filter-out-comment
   )
 )
