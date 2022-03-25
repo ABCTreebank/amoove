@@ -22,13 +22,13 @@
     ;; )
     
     ;; vacuous て
-    ( (list (annot (✑::cat (🐈::cat-adjunct _ _)) )
+    ( (list (annot (✑::cat (cat-adjunct _ _)) )
             "て"
       )
       (make-func-holder )
     )
     
-    ( (list (annot (✑::cat (🐈::cat-adjunct "\\" (cat-str "PP\\S" _))))
+    ( (list (annot (✑::cat (cat-adjunct "\\" (cat-str "PP\\S" _))))
             "あげ"
       )
       (make-func-holder
@@ -41,7 +41,7 @@
     )
  
     ;; punctuations
-    ( (list (annot (✑::cat (🐈::cat-adjunct _ _) ) )
+    ( (list (annot (✑::cat (cat-adjunct _ _) ) )
             (punc )
       )
       (make-func-holder )
@@ -68,7 +68,7 @@
                               (reduce-cat cat1 cat2)
           (match result-detail
             ;; if the reduction is successful
-            ( (reduce-result (🐈::reduction (or "<|" "<") ) (🐈::level l) )
+            ( (reduce-result (🐈::reduction (or "|<" "<") ) (🐈::level l) )
               (cond 
                 ( (zerop l) 
                   (list child2-lambdaed child1-lambdaed)
@@ -87,7 +87,7 @@
               )
             )
             
-            ( (🐈::reduce-result (🐈::reduction (or ">|" ">")) (🐈::level l) )
+            ( (reduce-result (🐈::reduction (or "|>" ">")) (🐈::level l) )
               (cond 
                 ( (zerop l) 
                   (list child1-lambdaed child2-lambdaed)
