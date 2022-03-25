@@ -34,16 +34,14 @@
                     ;; variable for gained trees
                     (tree-raw nil)
                     
-                    ;; the ABC tree pprinter
-                    (pprint-tree
-                        (amoove/psd::get-pprinter
-                          (lambda (i) 
-                                  (amoove/annot::serialize-annot
-                                      i
-                                      :print-cat 'amoove/cat::serialize-cat-abc
-                                  )
-                          )
-                        )
+                    ;; the ABC node pprinter
+                    (pprint-node
+                      (lambda (i) 
+                              (amoove/annot::serialize-annot
+                                  i
+                                  :print-cat 'amoove/cat::serialize-cat-abc
+                              )
+                      )
                     )
                   )
         (loop
@@ -51,8 +49,12 @@
             (if (null tree-raw) (return ))
             (multiple-value-bind (id tree) (amoove/psd::split-ID tree-raw) 
               (funcall alter-nodes tree)
-              (funcall pprint-tree tree :output-stream *error-output* :id id)
-              (format *error-output* "~%")
+              
+              (amoove/psd::pprint-tree tree
+                :converter pprint-node
+                :output-stream *error-output*
+                :id id
+              )
             )
         )
     )
