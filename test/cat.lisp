@@ -12,13 +12,39 @@
 
 (defparameter *cat-abc-tokenize-list*
   (list (list*  "Sm"
-                (list (list 'amoove/CAT::ATOM (make-cat :name "Sm")))
+                (list (list 'amoove/cat::ATOM "Sm"))
+        )
+        (list*  "S[m]"
+                (list (list 'amoove/cat::ATOM "S")
+                      (list 'amoove/cat::BRACKET-LEFT #\[)
+                      (list 'amoove/cat::ATOM "m")
+                      (list 'amoove/cat::BRACKET-RIGHT #\])
+                )
+        )
+        (list*  "S[m=acc]"
+                (list (list 'amoove/cat::ATOM "S")
+                      (list 'amoove/cat::BRACKET-LEFT #\[)
+                      (list 'amoove/cat::ATOM "m")
+                      (list 'amoove/cat::FEAT-EQ #\=)
+                      (list 'amoove/cat::ATOM "acc")
+                      (list 'amoove/cat::BRACKET-RIGHT #\])
+                )
+        )
+        (list*  "S[m][p]"
+                (list (list 'amoove/cat::ATOM "S")
+                      (list 'amoove/cat::BRACKET-LEFT #\[)
+                      (list 'amoove/cat::ATOM "m")
+                      (list 'amoove/cat::BRACKET-RIGHT #\])
+                      (list 'amoove/cat::BRACKET-LEFT #\[)
+                      (list 'amoove/cat::ATOM "p")
+                      (list 'amoove/cat::BRACKET-RIGHT #\])
+                )
         )
         (list*  "A/B" 
                 (list
-                    (list 'amoove/CAT::ATOM (make-cat :name "A"))
-                    (list 'amoove/CAT::SLASH-RIGHT #\/)
-                    (list 'amoove/CAT::ATOM (make-cat :name "B"))
+                    (list 'amoove/cat::ATOM "A")
+                    (list 'amoove/cat::SLASH-RIGHT #\/)
+                    (list 'amoove/cat::ATOM "B")
                 )
         )
   )
@@ -48,6 +74,20 @@
 
 (defparameter *cat-abc-list*
   (list (list* "Sm" (make-cat :name "Sm") )
+        (list* "S[m]" (make-cat :name "S"
+                                :feats (fset::map ("m" t) ) 
+                      )
+        )
+        (list* "S[p][m]" 
+            (make-cat :name "S"
+                      :feats (fset::map ("m" t) ("p" t) ) 
+            )
+        )
+        (list* "S[p=3][m=F][q=nIl]" 
+            (make-cat :name "S"
+                      :feats (fset::map ("m" :F) ("q" nil) ("p" "3") ) 
+            )
+        )
         (list* "A/B/C" ;; C → B → A
                 (make-cat 
                     :name "/"
@@ -125,6 +165,7 @@
 
 (defparameter *cat-reduce-abc-list*
   (list (list* (list "A" "A\\B") (list "B" "<") )
+        (list* (list "A" "A[s]\\B") (list "B" "<") )
         (list* (list "A" "B|A") (list "B" "|<") )
         (list* (list "A|B" "B") (list "A" "|>") )
         (list* (list "A/B" "B") (list "A" ">") )
@@ -155,6 +196,29 @@
           )
         )
         ( otherwise (error "Illegat test data"))
+    )
+  )
+)
+
+(defparameter *cat-unify-abc-list*
+  (list (list* (list "S[m]" "S") "S[m]" )
+        (list* (list "S[m]" "S[p]") "S[m][p]")
+        (list* (list "S[m=t]" "S[m=f]") nil)
+        (list* (list "NP[a]/S" "NP/S[m]") "NP[a]/S[m]")
+  )
+)
+(test unify-abc
+  (loop for test-data in *cat-unify-abc-list* do
+    (trivia::match test-data 
+      ( (list* (list cat1 cat2) cat-result)
+        (is (equalp (amoove/cat::unify  (parse-cat-abc cat1)
+                                        (parse-cat-abc cat2)
+                    )
+                    (parse-cat-abc cat-result)
+            )
+        )
+      )
+      ( otherwise (error "Illegat test data"))
     )
   )
 )

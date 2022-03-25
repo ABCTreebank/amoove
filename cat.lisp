@@ -253,7 +253,7 @@ If NAME-P is NIL, any functor categories will make a match."
       (cond 
         ;; (ant1\conseq1) == ant2
         ;; i.e. cat-left cat-left\conseq2
-        ( (equalp cat-left ant2)
+        ( (unify cat-left ant2)
           ;; → conseq2, <0
           (values conseq2 
                   (make-reduce-result
@@ -295,7 +295,7 @@ If NAME-P is NIL, any functor categories will make a match."
             (cat :name "/" :args (list ant2 conseq2))
       )
       (cond 
-        ( (equalp ant1 cat-right)
+        ( (unify ant1 cat-right)
           (values conseq1
                   (make-reduce-result
                       :reduction ">"
@@ -330,7 +330,7 @@ If NAME-P is NIL, any functor categories will make a match."
     ( (trivia::guard  (list (cat :name "/" :args (list ant1 conseq1))
                             (cat )
                       )
-                      (equalp ant1 cat-right)
+                      (unify ant1 cat-right)
       )
       ;; → conseq1, >0
       (values conseq1
@@ -346,7 +346,7 @@ If NAME-P is NIL, any functor categories will make a match."
     ( (trivia::guard  (list (cat )
                             (cat :name "\\" :args (list ant2 conseq2))
                       )
-                      (equalp cat-left ant2)
+                      (unify cat-left ant2)
       )
       ;; → conseq2, <0
       (values conseq2
@@ -362,7 +362,7 @@ If NAME-P is NIL, any functor categories will make a match."
     ( (trivia::guard  (list (cat :name "|" :args (list ant1 conseq1))
                             (cat )
                       )
-                      (equalp ant1 cat-right)
+                      (unify ant1 cat-right)
       )
       ;; → conseq1, |>0
       (values conseq1
@@ -378,7 +378,7 @@ If NAME-P is NIL, any functor categories will make a match."
     ( (trivia::guard  (list (cat )
                             (cat :name "|" :args (list ant2 conseq2))
                       )
-                      (equalp cat-left ant2)
+                      (unify cat-left ant2)
       )
       ;; → conseq2, |<0
       (values conseq2
@@ -478,7 +478,7 @@ If NAME-P is NIL, any functor categories will make a match."
                         ;; reset the pointers to the symbol char
                         (setq pointer-begin pointer-end)
                         ;; release the word buffer
-                        (return (values 'ATOM (make-cat :name word)))
+                        (return (values 'ATOM word))
                   )
                 )
                 ( t (return (values nil nil))
@@ -489,7 +489,7 @@ If NAME-P is NIL, any functor categories will make a match."
         (setq cursor (char input pointer-end))
         (cond
             ;; if it is not a symbol char
-            ( (not (find cursor "<>|/\\"))
+            ( (not (find cursor "[]<>|/\\="))
               ;; widen the window 
               (incf pointer-end)
             )
@@ -503,7 +503,7 @@ If NAME-P is NIL, any functor categories will make a match."
                     (setq pointer-begin pointer-end)
                 
                     ;; release the word buffer
-                    (return (values 'ATOM (make-cat :name word)))
+                    (return (values 'ATOM word) )
                     ;; the symbol is kept unreleased until the next invocation
               )
             )
@@ -519,6 +519,21 @@ If NAME-P is NIL, any functor categories will make a match."
               (setq pointer-begin (1+ pointer-end))
               (setq pointer-end pointer-begin)
               (return (values 'PAREN-RIGHT cursor))
+            )
+            ( (char= cursor #\[)
+              (setq pointer-begin (1+ pointer-end))
+              (setq pointer-end pointer-begin)
+              (return (values 'BRACKET-LEFT cursor))
+            )
+            ( (char= cursor #\])
+              (setq pointer-begin (1+ pointer-end))
+              (setq pointer-end pointer-begin)
+              (return (values 'BRACKET-RIGHT cursor))
+            )
+            ( (char= cursor #\=)
+              (setq pointer-begin (1+ pointer-end))
+              (setq pointer-end pointer-begin)
+              (return (values 'FEAT-EQ cursor))
             )
             ( (char= cursor #\|)
               (setq pointer-begin (1+ pointer-end))
@@ -547,46 +562,77 @@ If NAME-P is NIL, any functor categories will make a match."
 )
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun .make-conseq-infix-ant (conseq infix ant)
-      (list infix ant conseq)
+  (defun .make-slash-vert-right (conseq infix ant)
+    (make-cat :name (string infix) :args (list ant conseq))
   )
-  (defun .make-ant-infix-conseq (ant infix conseq)
-      (list infix ant conseq)
+  (defun .make-slash-left (ant infix conseq)
+    (make-cat :name (string infix) :args (list ant conseq))
   )
   (defun .take-middle (a b c)
     (declare (ignore a c))
     b
   )
+  (defun .take-feat (a b c)
+    (declare (ignore a c))
+    (list b t)
+  )
+  (defun .take-feat-eq (a b c d e)
+    (declare (ignore a c d))
+    (setq d (trivia::match (string-upcase d)
+                ( "T" t )
+                ( "NIL" nil )
+                ( "F" :F )
+                ( otherwise d )
+            )
+    )
+    (list b d)
+  )
+  (defun .make-cat-atom (name)
+    (make-cat :name name)
+  )
+  (defun .make-cat-atom-feats (name feats)
+    (let ( (feat-map (fset-user::empty-map)) )
+      (loop for featval in feats do
+        (setq feat-map
+              (fset-user::with feat-map (car featval) (cadr featval) )
+        )
+      )
+      (make-cat :name name :feats feat-map)
+    )
+  )
 )
 
 (yacc::define-parser *parser-cat-abc*
   (:start-symbol expr)
-  (:terminals ( ATOM PAREN-LEFT PAREN-RIGHT SLASH-VERT SLASH-LEFT SLASH-RIGHT))
+  (:terminals ( ATOM 
+                PAREN-LEFT PAREN-RIGHT
+                BRACKET-LEFT BRACKET-RIGHT FEAT-EQ
+                SLASH-VERT SLASH-LEFT SLASH-RIGHT
+              )
+  )
   (:precedence  ( (:right SLASH-LEFT)
                   (:left SLASH-RIGHT)
                   (:left SLASH-VERT)
                 )
   )
   
-  (expr (expr SLASH-VERT expr #'.make-conseq-infix-ant)
-        (expr SLASH-RIGHT expr #'.make-conseq-infix-ant)
-        (expr SLASH-LEFT expr #'.make-ant-infix-conseq)
-        term
-  )
-  
-  (term ATOM 
+  (expr (expr SLASH-VERT expr #'.make-slash-vert-right)
+        (expr SLASH-RIGHT expr #'.make-slash-vert-right)
+        (expr SLASH-LEFT expr #'.make-slash-left)
+        atomic
         (PAREN-LEFT expr PAREN-RIGHT #'.take-middle)
   )
-)
-
-(defun from-parsed-raw (parsed)
-  (trivia::match parsed
-      ( (cons func args)
-        (make-cat :NAME (string func)
-                  :ARGS (mapcar #'from-parsed-raw args)
-        )
-      )
-      ( otherwise parsed )
+  
+  (atomic ( ATOM feats #'.make-cat-atom-feats)
+          ( ATOM #'.make-cat-atom )
+  )
+  
+  (feats (feat feats #'cons) 
+         (feat #'list)
+  )
+  
+  (feat (BRACKET-LEFT ATOM BRACKET-RIGHT #'.take-feat)
+        (BRACKET-LEFT ATOM FEAT-EQ ATOM BRACKET-RIGHT #'.take-feat-eq)
   )
 )
 
@@ -601,11 +647,9 @@ If NAME-P is NIL, any functor categories will make a match."
     
     ;; if input is a string: parse
     ( (stringp input)
-      (from-parsed-raw 
-         (yacc::parse-with-lexer
-           (tokenize-cat-abc input)
-           *parser-cat-abc*
-         )
+      (yacc::parse-with-lexer
+        (tokenize-cat-abc input)
+        *parser-cat-abc*
       )
     )
     
