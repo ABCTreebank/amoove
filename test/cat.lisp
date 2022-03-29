@@ -5,6 +5,7 @@
       :parse-cat-abc
       :serialize-cat-abc
       :make-reduce-result
+      :cat-str
   )
 )
 (in-package :amoove/test/cat)
@@ -174,6 +175,10 @@
         (list* (list "A/B" "B/C/D") (list "A/C/D" ">2") )
         (list* (list "D\\C\\B" "B\\A") (list "D\\C\\A" "<2") )
         (list* (list "A|B" "B|C") (list nil nil))
+        (list* (list  "<<<S[m]|PPs>|<<PPs\\S[m]>/<PPs\\S[m]>>>|<<<S[m]|PPs>|<<PPs\\S[m]>/<PPs\\S[m]>>>|<<PPs\\S[m]>/<PPs\\S[m]>>>>" 
+                      "<<<S[m]|PPs>|<<PPs\\S[m]>/<PPs\\S[m]>>>|<<PPs\\S[m]>/<PPs\\S[m]>>>")
+               (list "<<S[m]|PPs>|<<PPs\\S[m]>/<PPs\\S[m]>>>" "|>")
+        )
   )
 )
 (test reduce-abc
@@ -202,6 +207,7 @@
 
 (defparameter *cat-unify-abc-list*
   (list (list* (list "S[m]" "S") "S[m]" )
+        (list* (list "S" "S[m]") "S[m]" )
         (list* (list "S[m]" "S[p]") "S[m][p]")
         (list* (list "S[m=t]" "S[m=f]") nil)
         (list* (list "NP[a]/S" "NP/S[m]") "NP[a]/S[m]")
@@ -219,6 +225,23 @@
         )
       )
       ( otherwise (error "Illegat test data"))
+    )
+  )
+)
+
+(test pattern-cat-str
+  (loop for test-data in *cat-unify-abc-list* do
+    (trivia::match test-data
+      ( (list* (list cat1 cat2) cat-result)
+        (eval `(trivia::match ,(parse-cat-abc cat1)
+                  ( (cat-str ,cat2 r) 
+                    (is (equalp ,(parse-cat-abc cat-result) r))
+                  )
+                )
+        )
+      )
+        
+      ( otherwise (fail ))
     )
   )
 )
