@@ -12,6 +12,7 @@
     serialize-cat-abc
     parse-cat-abc
     reduce-result make-reduce-result
+    reduce-cat
     serialize-reduce-result parse-reduce-result
   )
 )
@@ -142,16 +143,18 @@ If NAME-P is NIL, any functor categories will make a match."
 (defun .unify-feats (feats1 feats2)
   (let          ( (res-map feats1))
     (fset-user::do-map (key2 val2 feats2)
-      (multiple-value-bind  (ret is_successful) 
+      (multiple-value-bind  (val-returned is_successful) 
                             (fset-user::lookup res-map key2)
         (cond
           ;; if the key is not specified in map1 or has a nil value
-          ( (or (null ret) (null is_successful))
+          ( (or (null val-returned) (null is_successful))
             (fset-user::adjoinf res-map key2 val2)
           )
           
-          ;; TODO: merge submaps
-          
+          ;; if the values match
+          ( (equalp val-returned val2)
+            ;; keep that value 
+          )
           ;: otherwise: abort and return nil
           ( t
             (setq res-map nil)
