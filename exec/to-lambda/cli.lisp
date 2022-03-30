@@ -1,25 +1,7 @@
 (in-package :amoove/to-lambda)
 
-(defparameter *iter-abc-tree-raw*
-  (amoove/psd::get-parser *standard-input*)
-)
-
-(defparameter *parse-abc-cat-annoted*
-  (✑::make-parser :cat-parser 🐈::parse-cat-abc)
-)
-
-;; NOTE: Destructive!
-(defparameter *alter-parse-abc-tree-nodes* 
-  (amoove/psd::alter-nodes 
-    :f-nonterminal *parse-abc-cat-annoted*
-  )
-)
-
-(defun pprint-abc-node (item)
-  (✑::serialize-annot item :print-cat '🐈::serialize-cat-abc )
-)
-
 (defun parse-subcommands (args)
+  "Parse subcommands in ARGS and assembly a function doing what the subcommands require."
   (let* ( (commands nil)
           (commands-tail commands)
           (v-item (gensym "item_"))
@@ -27,8 +9,19 @@
     (loop for a in args do
       (trivia::match a
         ( "move-comp"
-          ;; (setq func (lambda (i) (funcall func i)))
-          ;; TODO: implement move-comp
+          (cond
+            ( (null commands)
+              (setq commands (cons `(setq ,v-item (move-comp ,v-item) ) nil) )
+              (setq commands-tail commands)
+            )
+            ( t 
+              (let  ( (com (cons `(setq ,v-item (move-comp ,v-item) ) nil ))
+                    )
+                (setf (cdr commands-tail) com)
+                (setq commands-tail com)
+              )
+            )
+          )
         )
         
         ( "translate"
@@ -47,16 +40,48 @@
           )
         )
         
-        ( "reduce"
+        ( "reduce1"
           (cond
             ( (null commands)
               (setq commands 
-                    (cons `(setq ,v-item (reduce-lambda ,v-item) ) nil)
+                    (cons 
+                      `(setq ,v-item (reduce-lambda ,v-item :max-reduction 1) ) 
+                      nil
+                    )
               )
               (setq commands-tail commands)
             )
             ( t 
-              (let  ( (com (cons `(setq ,v-item (reduce-lambda ,v-item) ) nil))
+              (let  ( (com  (cons 
+                              `(setq ,v-item (reduce-lambda ,v-item :max-reduction 1) ) 
+                              nil
+                            )
+                      )
+                    )
+                (setf (cdr commands-tail) com)
+                (setq commands-tail com)
+              )
+            )
+          )
+        )
+        
+        ( "reduce"
+          (cond
+            ( (null commands)
+              (setq commands 
+                    (cons 
+                      `(setq ,v-item (reduce-lambda ,v-item :max-reduction -1) ) 
+                      nil
+                    )
+              )
+              (setq commands-tail commands)
+            )
+            ( t 
+              (let  ( (com  (cons 
+                              `(setq ,v-item (reduce-lambda ,v-item :max-reduction -1) ) 
+                              nil
+                            )
+                      )
                     )
                 (setf (cdr commands-tail) com)
                 (setq commands-tail com)

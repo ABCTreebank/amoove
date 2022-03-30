@@ -52,6 +52,7 @@
     :fset
     :trivia
     :trivia.ppcre
+    :trivia.fset
     :amoove
     :unix-opts
   )
@@ -60,6 +61,7 @@
     (:module "exec/to-lambda"
       :components (
         (:file "base")
+        (:file "move-comp")
         (:file "to-lambda")
         (:file "reduce")
         (:file "cli")
@@ -69,4 +71,24 @@
   :build-operation "program-op"
   :build-pathname "bin/abc2lambda"
   :entry-point "amoove/to-lambda:main"
+  :in-order-to (
+    (test-op (test-op amoove/to-lambda/test))
+  )
+)
+
+(defsystem "amoove/to-lambda/test"
+  :depends-on ("amoove" "amoove/to-lambda" "fiveam")
+  :serial t
+  :components (
+    (:module "exec/to-lambda/test"
+        :components ( 
+          (:file "main")
+          (:file "move-comp")
+        )
+    )
+  )
+  :perform (
+    test-op (o s)
+      (symbol-call :fiveam :run! :amoove/to-lambda )
+  )
 )

@@ -36,10 +36,33 @@
   )
   
   (trivia::in-optimizer :balland2006)
+  (setq trivia.balland2006::*optimization-timeout* 10)
+  (setq trivia.balland2006::*grounding-clause-limit* 2000)
+)
+
+(defparameter *iter-abc-tree-raw*
+  (amoove/psd::get-parser *standard-input*)
+  "A generator that yields ABC trees from *STANDARD-INPUT*."
+)
+
+(defparameter *parse-abc-cat-annoted*
+  (✑::make-parser :cat-parser 🐈::parse-cat-abc)
+  "The parser of ABC categories with meta features."
+)
+
+;; NOTE: Destructive!
+(defparameter *alter-parse-abc-tree-nodes* 
+  (amoove/psd::alter-nodes 
+    :f-nonterminal *parse-abc-cat-annoted*
+  )
+)
+
+(defun pprint-abc-node (item)
+  (✑::serialize-annot item :print-cat '🐈::serialize-cat-abc )
 )
 
 (defstruct (func-holder (:conc-name get-))
-  (func (lambda (i) i) :type function)
+  (func #'identity :type function)
   (argn 1 :type integer)
   (desc "IDENTITY FUNCTION" :type string)
 )
@@ -53,3 +76,4 @@
       "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
   )
 )
+

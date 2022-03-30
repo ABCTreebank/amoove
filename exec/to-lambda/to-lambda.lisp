@@ -1,25 +1,19 @@
 (in-package :amoove/to-lambda)
 
+(defun .quote-tree (o)
+  (cond 
+    ( (consp o)
+       `(list ,@(mapcar #'.quote-tree o))
+    )
+    ( t o )
+  )
+)
+
 (defun to-lambda (item)
   (match item
     ;; ============
     ;; Lexical rules
     ;; ============
-    ;; ( (list (annot (✑::cat (cat-str "N" result) ) ) 
-    ;;         "私"
-    ;;   )
-    ;;   'SPEAKER
-    ;; )
-    ;; ( (list (annot (✑::cat (cat-str "<NP\\<<PPs\\Sa>/<PPs\\Sa>>>" _) ))
-    ;;         "に"
-    ;;   )
-    ;;   (make-func-holder :func (lambda (&rest args) args) :argn 3)
-    ;; )
-    ;; ( (list (annot (✑::cat (cat-uncurried "\\" (list arg1 arg2) conseq) ) ) 
-    ;;         w
-    ;;   )
-    ;;   (format nil "~a;~a;~a" 2 (🐈::serialize-cat-abc conseq) w )
-    ;; )
     
     ;; vacuous て
     ( (list (annot (✑::cat (cat-adjunct _ _)) )
@@ -36,7 +30,50 @@
                   (list 'AND (list verb sbj) (list 'HELPER sbj))
               )
         :argn 2
-        :desc "BENEFACTIVE"
+        :desc "benefactive"
+      )
+    )
+    
+    ;; より
+    ( (list (annot  (✑::feats 
+                      (fset::map ("lexspec" (lexspec-yori n-cont n-diff) ) )
+                    )
+            )
+            (trivia.ppcre::ppcre "^より(か|は|かは|も)?$" _)
+      )
+      (let* ( (symb-cont  (loop for i from 0 below n-cont
+                            collect (gensym (format nil "cont_~d_" i))
+                          )
+              )
+              (symb-diff  (loop for i from 0 below n-diff
+                            collect (gensym (format nil "diff_~d_" i))
+                          )
+              )
+              (cont-arg-ident 
+                (lambda ()
+                  (loop for i from 0 to n-cont 
+                        collect (make-func-holder )
+                  )
+                )
+              )
+              (splice-list-cont 
+                (loop for symb in symb-cont
+                  collect `(list clause ,symb ,@(funcall cont-arg-ident) )
+                )
+              )
+            )
+        (make-func-holder
+          :func (eval `(lambda (cont_prej clause ,@symb-diff ,@symb-cont)
+                          (list ':YORI
+                            (list clause cont_prej ,@(funcall cont-arg-ident))
+                            ,@splice-list-cont
+                            ,@symb-diff
+                          )
+                        )
+                )
+          :argn (+ 2 n-cont n-diff)
+          :desc (fset-user::lookup (✑:get-feats (car item)) "lexspec" )
+        )
       )
     )
  
@@ -54,6 +91,20 @@
     ;; ============
     ;; Binary branching rules
     ;; ============
+    
+    ;; slash introduction
+    ( (list (annot (✑::feats (fset::map ("deriv" "bind"))))
+            vars
+            base
+      )
+      (make-func-holder
+        :func (eval `(lambda ,vars ,(.quote-tree (to-lambda base) )) )
+        :argn (length vars)
+        :desc "SLASH introduction"
+      )
+    )
+    
+    ;; slash elmination
     ( (guard 
         (list (annot (✑::feats feats) )
               (cons (annot (✑::cat cat1) ) _ )
@@ -102,6 +153,9 @@
                               )
                             )
                       :argn l
+                      :desc (format nil "~a" 
+                                  (🐈:serialize-reduce-result  result-detail)
+                            )
                     )
                   )
                 )
@@ -110,7 +164,7 @@
             
             ;; if the reduction fails
             ( otherwise
-              (cons 'LEAVE (mapcar #'to-lambda (cdr item)) )
+              (cons ':LEAVE (mapcar #'to-lambda (cdr item)) )
             )
           )
         )
@@ -125,10 +179,10 @@
                   _
             )
       )
-      (list 'THE (to-lambda (cadr item)) )
+      (list ':THE (to-lambda (cadr item)) )
     )
       
-    ( (list (annot (✑::cat (cat-str "Ns\\N" _)))
+    ( (list (annot (✑::cat (cat-str "N[s]\\N" _)))
             (cons (annot (✑::cat (cat-str "NUM" _))) 
                   _
             )
@@ -148,6 +202,7 @@
                 )
               )
         :argn 2
+        :desc "<Ns\\N> → NUM"
       )
     )
     
@@ -164,6 +219,7 @@
                 )
               )
         :argn 2 
+        :desc "<N/N> → S|PP"
       )
     )
     
@@ -181,7 +237,7 @@
     ;; Ternary or more branching
     ;; ============
     ;; branching of an unknown arity
-    ( (type list) (list 'LEAVE (mapcar #'to-lambda (cdr item)) ) )
+    ( (type list) (list ':LEAVE (mapcar #'to-lambda (cdr item)) ) )
     
     ;; ============
     ;; Non-tree
