@@ -1,14 +1,5 @@
 (in-package :amoove/to-lambda)
 
-(defun .quote-tree (o)
-  (cond 
-    ( (consp o)
-       `(list ,@(mapcar #'.quote-tree o))
-    )
-    ( t o )
-  )
-)
-
 (defun to-lambda (item)
   (match item
     ;; ============
@@ -19,60 +10,60 @@
     ( (list (annot (✑::cat (cat-adjunct _ _)) )
             "て"
       )
-      (make-func-holder )
+      (let ( (v-x (gensym "X_")))
+        `(:λ (,v-x) ,v-x)
+      )
     )
     
     ( (list (annot (✑::cat (cat-adjunct "\\" (cat-str "PP\\S" _))))
             "あげ"
       )
-      (make-func-holder
-        :func (lambda (verb sbj)
-                  (list 'AND (list verb sbj) (list 'HELPER sbj))
-              )
-        :argn 2
-        :desc "benefactive"
+      (let ( (v-verb (gensym "VERB_"))
+             (v-sbj (gensym "SBJ_"))
+            )
+        `(:λ (,v-verb ,v-sbj) (:AND (,v-verb ,v-sbj) (:HELPER ,v-sbj)))
       )
     )
     
     ;; より
-    ( (list (annot  (✑::feats 
+    ( (cons (annot  (✑::feats 
                       (fset::map ("lexspec" (lexspec-yori n-cont n-diff) ) )
                     )
             )
-            (trivia.ppcre::ppcre "^より(か|は|かは|も)?$" _)
+            _
       )
-      (let* ( (symb-cont  (loop for i from 0 below n-cont
-                            collect (gensym (format nil "cont_~d_" i))
+      (let* ( (v-prej (gensym "PREJ_"))
+              (v-clause (gensym "CLAUSE_"))
+              (symb-cont  (loop for i from 0 below n-cont
+                            collect (gensym (format nil "CONT_~d_" i))
                           )
               )
               (symb-diff  (loop for i from 0 below n-diff
-                            collect (gensym (format nil "diff_~d_" i))
+                            collect (gensym (format nil "DIFF_~d_" i))
                           )
               )
-              (cont-arg-ident 
+              (gen-cont-diff-dummy
                 (lambda ()
-                  (loop for i from 0 to n-cont 
-                        collect (make-func-holder )
+                  (loop for i from 0 below (+ n-cont n-diff) 
+                        collect (let ((v-x (gensym "X_"))
+                                     )
+                                    `(:λ (,v-x) ,v-x)
+                                )
                   )
                 )
               )
               (splice-list-cont 
                 (loop for symb in symb-cont
-                  collect `(list clause ,symb ,@(funcall cont-arg-ident) )
+                  collect `(,v-clause ,symb ,@(funcall gen-cont-diff-dummy) )
                 )
               )
             )
-        (make-func-holder
-          :func (eval `(lambda (cont_prej clause ,@symb-diff ,@symb-cont)
-                          (list ':YORI
-                            (list clause cont_prej ,@(funcall cont-arg-ident))
-                            ,@splice-list-cont
-                            ,@symb-diff
-                          )
-                        )
-                )
-          :argn (+ 2 n-cont n-diff)
-          :desc (fset-user::lookup (✑:get-feats (car item)) "lexspec" )
+        `(:λ (,v-prej ,v-clause ,@symb-diff ,@symb-cont)
+             (:YORI
+                (,v-clause ,v-prej ,@(funcall gen-cont-diff-dummy))
+                ,@splice-list-cont
+                ,@symb-diff
+             )
         )
       )
     )
@@ -81,10 +72,35 @@
     ( (list (annot (✑::cat (cat-adjunct _ _) ) )
             (punc )
       )
-      (make-func-holder )
+      (let ( (v-x (gensym "X_")))
+        `(:λ (,v-x) ,v-x)
+      )
     )
     
     ;; the fallback lexical rule
+    ;; the eta-expanding version:
+    ;; ( (guard  (list (annot (✑:cat (cat-uncurried-ignore-functors args conseq)))
+    ;;                 w
+    ;;           ) 
+    ;;           (stringp w)
+    ;;   )
+    ;;   (match args
+    ;;     ;; if it has one or more argument
+    ;;     ( (cons _ _)
+    ;;       (let  ( (vs-args (loop for i from 0 below (length args)
+    ;;                              collect (gensym "X_")
+    ;;                         )
+    ;;               )
+    ;;             )
+    ;;         `(:λ ,vs-args (,w ,@vs-args))
+    ;;       )
+    ;;     )
+        
+    ;;     ;; otherwise
+    ;;     ( otherwise w )
+    ;;   )
+    ;; )
+    
     ( (guard (list _ w) (stringp w) ) w )
     ( (guard (list _ w) (symbolp w) ) w )
     
@@ -92,16 +108,12 @@
     ;; Binary branching rules
     ;; ============
     
-    ;; slash introduction
+    ;; slash introduction aka "bind"
     ( (list (annot (✑::feats (fset::map ("deriv" "bind"))))
             vars
             base
       )
-      (make-func-holder
-        :func (eval `(lambda ,vars ,(.quote-tree (to-lambda base) )) )
-        :argn (length vars)
-        :desc "SLASH introduction"
-      )
+      `(:λ ,vars ,(to-lambda base))
     )
     
     ;; slash elmination
@@ -124,15 +136,15 @@
                 ( (zerop l) 
                   (list child2-lambdaed child1-lambdaed)
                 )
-                ( t 
-                  (make-func-holder
-                    :func (lambda (&rest args)
-                            (list child2-lambdaed
-                                  (cons child1-lambdaed args)
-                            )
+                ( t
+                  (let  ( (vs-arg (loop for i from 0 below l 
+                                      collect (gensym (format nil "X_~d_" i))
+                                  )
                           )
-                    :argn l
-                    :desc (format nil "~a" result-detail)
+                        )
+                    `(:λ ,vs-arg
+                         (,child2-lambdaed (,child1-lambdaed ,@vs-arg))
+                    )
                   )
                 )
               )
@@ -143,19 +155,14 @@
                 ( (zerop l) 
                   (list child1-lambdaed child2-lambdaed)
                 )
-                ( t 
-                  (let  ( (args (loop repeat l collect (gensym ) ) ) 
+                ( t
+                  (let  ( (vs-arg (loop for i from 0 below l 
+                                    collect (gensym (format nil "X_~d_" i))
+                                )
+                          )
                         )
-                    (make-func-holder
-                      :func (lambda (&rest args)
-                              (list child1-lambdaed
-                                    (cons child2-lambdaed args)
-                              )
-                            )
-                      :argn l
-                      :desc (format nil "~a" 
-                                  (🐈:serialize-reduce-result  result-detail)
-                            )
+                    `(:λ ,vs-arg
+                         (,child1-lambdaed (,child2-lambdaed ,@vs-arg))
                     )
                   )
                 )
@@ -164,7 +171,7 @@
             
             ;; if the reduction fails
             ( otherwise
-              (cons ':LEAVE (mapcar #'to-lambda (cdr item)) )
+              (list ':LEAVE (mapcar #'to-lambda (cdr item)))
             )
           )
         )
@@ -182,44 +189,50 @@
       (list ':THE (to-lambda (cadr item)) )
     )
       
-    ( (list (annot (✑::cat (cat-str "N[s]\\N" _)))
+    ( (list (annot (✑::cat (cat-str "Ns\\N" _)))
             (cons (annot (✑::cat (cat-str "NUM" _))) 
                   _
             )
       )
-      (make-func-holder
-        :func (lambda (q2 f)
-                (list q2 
-                      (lambda (x)
-                        (list (to-lamdba (cadr item))
-                              (lambda (y) (list 'AND
-                                                (list 'QUANT x y)
-                                                (list f x)
-                                          )
-                              )
+      (let  ( (v-q2 (gensym "Q2_"))
+              (v-f (gensym "F_"))
+              (v-x (gensym "X_"))
+              (v-y (gensym "y_"))
+            )
+        `(:λ (,v-q2 ,v-f) 
+             (,v-q2 (:λ (,v-x)
+                        ,(to-lambda (cadr item) )
+                        (:λ (,v-y)
+                            (:AND (:QUANT ,v-x ,v-y) (,v-f ,v-x))
                         )
-                      )
-                )
+                    )
               )
-        :argn 2
-        :desc "<Ns\\N> → NUM"
+        )
       )
     )
     
-    ( (list (annot (✑::cat (cat-str "N/N" _)))
-            (cons (annot (✑::cat (cat-str "S|PP" _)))
+    ( (list (annot (✑::cat (or (cat-str "N/N" _)
+                                (cat-str "NP/NP" _)
+                            )
+                   )
+            )
+            (cons (annot (✑::cat (or (cat-str "PP\\S" _)
+                                      (cat-str "S|PP" _)
+                                  )
+                        )
+                  )
                   _
             )
       )
-      (make-func-holder
-        :func (lambda (n x)
-                (list 'AND 
-                      (list (to-lamdba (cadr item)) x)
-                      (list n x)
-                )
-              )
-        :argn 2 
-        :desc "<N/N> → S|PP"
+      (let  ( (v-n (gensym "N_"))
+              (v-x (gensym "X_"))
+            )
+        `(:λ (,v-n ,v-x)
+             (:AND 
+                (,(to-lambda (cadr item)) ,v-x)
+                (,v-n ,v-x)
+             )
+        )
       )
     )
     

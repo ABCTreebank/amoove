@@ -1,78 +1,78 @@
 (in-package :amoove/to-lambda)
 
-(defun reduce-lambda (item &key (max-reduction -1))
-  (declare (type integer max-reduction))
+(defun reduce-lambda (item &key (var-table (fset-user::empty-map ) ))
   (match item
+    ;; ( (:λ (var ,@var-rest) body) 
+    ;;    arg 
+    ;;   ,@arg-rest
+    ;; )
+    ;; →
+    ;; ( (:λ ,var-rest body[var → arg]) 
+    ;;   ,@arg-rest
+    ;; )
+    ( (cons (list ':λ (cons var var-rest) body) 
+            (cons arg arg-rest)
+      )
+      ;; do function application and reduce again
+      (reduce-lambda 
+        `((:λ ,var-rest ,body) ,@arg-rest)
+        ;; create a local context
+        :var-table (fset-user::with var-table var arg)
+      )
+    )
+    
+    ;; ( (:λ ,vars body) )
+    ;; → peel off the outer list
+    ( (cons (cons ':λ _) nil) 
+      (reduce-lambda (car item) :var-table var-table )
+    )
+    
+    ;; (:λ () body)
+    ;; → peel off the λ
+    ( (list ':λ nil body) 
+      (reduce-lambda body :var-table var-table)
+    )
+    
+    ;; (:λ ... ...)
+    ( (list ':λ args body)
+      `(:λ ,args ,(reduce-lambda body :var-table var-table) )
+    )
+    
     ( (type list)
-      (let  ( (item-reduced (loop for i in item
-                                  collect
-                                  (reduce-lambda i 
-                                      :max-reduction max-reduction
-                                  )
-                            )
+      (let  ( (tree-elements-reduced 
+                (loop for child in item 
+                      collect
+                      (reduce-lambda child 
+                                    :var-table var-table
+                      )
+                )
               )
             )
-        (match item-reduced
-          ( (cons (func-holder func argn) children)
-            (let          ( (arg-len (length children)) )
-              (cond 
-                ( (< arg-len argn)
-                  (make-func-holder
-                    :func (lambda (&rest arg-rest) 
-                                  (apply func (append children arg-rest))
-                          )
-                    :argn (- argn arg-len)
-                  )
-                )
-                ( (= arg-len argn)
-                  (cond 
-                    ( (< max-reduction 0)
-                      (reduce-lambda (apply func children))
-                    )
-                    ( (> max-reduction 0)
-                      (reduce-lambda (apply func children)
-                                     :max-reduction (1- max-reduction)
-                      )
-                    )
-                    ( t 
-                      ;; pause further reduction
-                      (apply func children)
-                    )
-                  )
-                )
-                ( t
-                  (let  ( (apply-res (apply func (subseq children 0 argn)))
-                          (arg-rem (subseq children argn))
-                        )
-                    (cond 
-                      ( (< max-reduction 0)
-                        (cons 
-                          (reduce-lambda apply-res :max-reduction -1)
-                          arg-rem
-                        )
-                      )
-                      ( (> max-reduction 0)
-                        (cons 
-                          (reduce-lambda apply-res
-                                         :max-reduction (1- max-reduction)
-                          )
-                          arg-rem
-                        )
-                      )
-                      ( t 
-                        ;; pause further reduction
-                        (cons apply-res arg-rem) 
-                      )
-                    )
-                  )
-                )
-              )
+        (match tree-elements-reduced
+          ;; if the tree contains a reducible subform
+          ( (cons (cons ':λ _) _)
+            ;; repeat the reduction again
+            (reduce-lambda tree-elements-reduced
+                          :var-table var-table
             )
           )
-          
-          ( (list only-child) only-child )
-          
-          ( otherwise item-reduced )
+          ;; otherwise
+          ;; stop the recusion 
+          ( otherwise tree-elements-reduced )
+        )
+      )
+    )
+    
+    ;; if ITEM is a symbol
+    ( (type symbol)
+      ;; try to replace ITEM according to the variable assignment 
+      (multiple-value-bind  (repl is_successful)
+                            (fset-user::lookup var-table item)
+        (cond
+          ( is_successful 
+            (reduce-lambda repl :var-table var-table)
+          )
+          ( t item )
         )
       )
     )

@@ -62,7 +62,7 @@
   )
 )
 
-(function-cache::defcached uncurry-cat (item &key (name-p nil))
+(function-cache::defcached uncurry-cat (item &key (name-p t))
   "List the antecedents of a (possibly multiple) functor category ITEM.
 
 The primary returning value is, if any, the outmost functor name.
@@ -72,7 +72,8 @@ The tertiary value is the consequence.
 NAME-P specifies the functor (`/`, `\\`, or `|`) the function should exclusively match with.
 For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields '(E D) and <C\\<A/B>> (the search stops at the `\\` functor).
 
-If NAME-P is NIL, any functor categories will make a match."
+If NAME-P is NIL, any functor categories will make a match.
+If NAME-P is T, the first found functor is used."
   (cond 
     ( (stringp name-p)
       (trivia::match item
@@ -82,9 +83,25 @@ If NAME-P is NIL, any functor categories will make a match."
               )
               (string= name-p name)
           )
-          (multiple-value-bind  (args conseq)
+          (multiple-value-bind  (unc-name unc-args unc-conseq)
                                 (uncurry-cat conseq :name-p name-p)
-            (values name (cons ant args) conseq)
+            ;; (format *error-output* "X ~a ~a ~%" args conseq)
+            (values name (cons ant unc-args) unc-conseq)
+          )
+        )
+        ( otherwise (values nil '() item) )
+      )
+    )
+    ( (eq name-p t)
+      (trivia::match item 
+        ( (cat  :name name
+                :args (list ant conseq)
+          )
+          (multiple-value-bind  (unc-name unc-args unc-conseq)
+                                ;; use the functor name
+                                (uncurry-cat conseq :name-p name)
+            ;; (format *error-output* "X ~a ~a ~%" args conseq)
+            (values name (cons ant unc-args) unc-conseq)
           )
         )
         ( otherwise (values nil '() item) )
@@ -95,9 +112,11 @@ If NAME-P is NIL, any functor categories will make a match."
         ( (cat  :name name
                 :args (list ant conseq)
           )
-          (multiple-value-bind  (args conseq)
-                                (uncurry-cat conseq :name-p name)
-            (values name (cons ant args) conseq)
+          (multiple-value-bind  (unc-name unc-args unc-conseq)
+                                ;; use the functor name
+                                (uncurry-cat conseq :name-p nil)
+            ;; (format *error-output* "X ~a ~a ~%" args conseq)
+            (values name (cons ant unc-args) unc-conseq)
           )
         )
         ( otherwise (values nil '() item) )
@@ -108,6 +127,28 @@ If NAME-P is NIL, any functor categories will make a match."
     )
   )
 )
+
+(trivia::defpattern cat-uncurried-ignore-functors (args conseq)
+  "Match a CAT with all of its functors destructed regardless of their types.
+   ARGS, as a list, stores the functor categorie(s).
+   CONSEQ stores the consequent category.
+
+   Example: `<A\\B\\C\\D>/E` makes a match.
+    ARGS is `'(E, A, B, C)`, and CONSEQ is `D`.
+  "
+  (let    ( (v-item (gensym "item_ "))
+            (v-item-uncurried (gensym "item-uncurried_")) 
+          )
+    `(trivia::guard1  ,v-item (cat-p ,v-item)
+        (multiple-value-list (uncurry-cat ,v-item :name-p nil ) )
+        (trivia::guard1 ,v-item-uncurried t
+            (cadr ,v-item-uncurried) ,args
+            (caddr ,v-item-uncurried) ,conseq
+        )
+    )
+  )
+)
+
 
 (trivia::defpattern cat-uncurried (functor args conseq)
   "Match a CAT with its functors destructed.
@@ -122,15 +163,7 @@ If NAME-P is NIL, any functor categories will make a match."
             (v-item-uncurried (gensym "item-uncurried_")) 
           )
     `(trivia::guard1  ,v-item (cat-p ,v-item)
-        (multiple-value-list
-            (uncurry-cat 
-              ,v-item
-              :name-p (if (= (length (get-args ,v-item)) 2)
-                          (get-name ,v-item)
-                          nil
-                      )
-            )
-        )
+        (multiple-value-list (uncurry-cat ,v-item :name-p t ) )
         (trivia::guard1 ,v-item-uncurried t
             (car ,v-item-uncurried) ,functor
             (cadr ,v-item-uncurried) ,args

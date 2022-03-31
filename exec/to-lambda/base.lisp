@@ -11,6 +11,7 @@
       :cat-str
       :cat-adjunct
       :cat-uncurried
+      :cat-uncurried-ignore-functors
       :reduce-cat
       :reduce-result
   )

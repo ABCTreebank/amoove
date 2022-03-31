@@ -8,6 +8,21 @@
         )
     (loop for a in args do
       (trivia::match a
+        ( "restore-empty"
+          (cond
+            ( (null commands)
+              (setq commands (cons `(setq ,v-item (restore-empty ,v-item) ) nil) )
+              (setq commands-tail commands)
+            )
+            ( t 
+              (let  ( (com (cons `(setq ,v-item (restore-empty ,v-item) ) nil ))
+                    )
+                (setf (cdr commands-tail) com)
+                (setq commands-tail com)
+              )
+            )
+          )
+        )
         ( "move-comp"
           (cond
             ( (null commands)
@@ -40,37 +55,12 @@
           )
         )
         
-        ( "reduce1"
-          (cond
-            ( (null commands)
-              (setq commands 
-                    (cons 
-                      `(setq ,v-item (reduce-lambda ,v-item :max-reduction 1) ) 
-                      nil
-                    )
-              )
-              (setq commands-tail commands)
-            )
-            ( t 
-              (let  ( (com  (cons 
-                              `(setq ,v-item (reduce-lambda ,v-item :max-reduction 1) ) 
-                              nil
-                            )
-                      )
-                    )
-                (setf (cdr commands-tail) com)
-                (setq commands-tail com)
-              )
-            )
-          )
-        )
-        
         ( "reduce"
           (cond
             ( (null commands)
               (setq commands 
                     (cons 
-                      `(setq ,v-item (reduce-lambda ,v-item :max-reduction -1) ) 
+                      `(setq ,v-item (reduce-lambda ,v-item) ) 
                       nil
                     )
               )
@@ -78,7 +68,7 @@
             )
             ( t 
               (let  ( (com  (cons 
-                              `(setq ,v-item (reduce-lambda ,v-item :max-reduction -1) ) 
+                              `(setq ,v-item (reduce-lambda ,v-item) ) 
                               nil
                             )
                       )
@@ -93,7 +83,7 @@
         ( "relax"
           ;; do nothing 
         )
-      
+        
         ( otherwise 
           (error (format nil "FATAL: illegal subcommand: ~a~%" a))  
         )

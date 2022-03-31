@@ -84,6 +84,9 @@
 )
 
 (defun convert-prej (tree-prej cat-root-original o)
+  "Type-shift prejacent constituents of comparatives.
+E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (S|NP|<S/S>|<S/S>|NP より))
+"
   (declare  (type cons tree-prej)
             (type 🐈:cat cat-root-original)
             (type comp-info o)
@@ -92,8 +95,8 @@
     ;; (node-orej NP (comp-term-node __))
     ( (list node
             np
-            (list (✑:annot (✑:feats comp-term-node-feats) ) 
-                  word
+            (cons (✑:annot (✑:feats comp-term-node-feats) ) 
+                  words
             )
       )
       (let* ( (cat-prej-mod 
@@ -127,14 +130,14 @@
               ;; np, as it is
               np
               ;; comp-word rewritten
-              (list (✑:make-annot
+              (cons (✑:make-annot
                       :cat cat-prej-head 
                       :feats  (fset-user::with comp-term-node-feats
                                 "lexspec"
                                 (make-yori-lexspec o)
                               )
                     )
-                    word
+                    words
               )
         )
       )
@@ -157,7 +160,121 @@
   )
 )
 
+(defun restore-empty (tree) 
+  (trivia::match tree
+    ;; <PP\S> or <NP\S>#comp=INDEX,root,cont
+    ( (cons (annot (✑:cat (🐈:cat
+                            (🐈:name "\\")
+                            (🐈:args (list trace-cat 
+                                           (cat-str "S" clause-cat)
+                                     )
+                            )
+                          )
+                    )
+                   (✑:feats (comp index (or (list "root" "cont")
+                                            (list "cont" "root")
+                                        )
+                            )
+                   )
+            )
+            children 
+      )
+      (let ( (symb-trace (gensym "TRACE_")) )
+        (list ;; (PP\S#deriv=bind (symb-trace ) ...)
+              (✑:make-annot 
+                :cat (🐈:make-cat 
+                        :name "\\" 
+                        :args (list trace-cat clause-cat)
+                      )
+                :feats (fset:map ("deriv" "bind"))
+              )
+              (list symb-trace)
+              (list ;; S#comp=INDEX,root
+                    (✑:make-annot 
+                      :cat clause-cat 
+                      :feats (fset:map 
+                                ("comp" (format nil "~d,root" index))
+                              )
+                    )
+                    ;; (NP#comp=INDEX,cont symb-trace)
+                    (list (✑:make-annot
+                            :cat trace-cat
+                            :feats (fset:map 
+                                      ("comp" (format nil "~d,cont" index))
+                                    )
+                          )
+                          symb-trace
+                    )
+                    ;; (PP\S ,@children)
+                    (cons (✑:make-annot 
+                            :cat (🐈:make-cat
+                                    :name "\\"
+                                    :args (list trace-cat clause-cat)
+                                  )
+                          )
+                          (mapcar #'restore-empty children)
+                    )
+              )
+        )
+      )
+    )
+        
+    ;; <PP\S> or <NP\S>#comp=INDEX,root
+    ( (cons (annot (✑:cat (🐈:cat
+                            (🐈:name "\\")
+                            (🐈:args (list trace-cat 
+                                           (cat-str "S" clause-cat)
+                                     )
+                            )
+                          )
+                    )
+                   (✑:feats (comp index (list "root") ) )
+            )
+            children 
+      )
+      (let ( (symb-trace (gensym "TRACE_")) )
+        (list ;; (PP\S#deriv=bind (symb-trace ) ...)
+              (✑:make-annot 
+                :cat (🐈:make-cat 
+                        :name "\\" 
+                        :args (list trace-cat clause-cat)
+                      )
+                :feats (fset:map ("deriv" "bind"))
+              )
+              (list symb-trace)
+              (list ;; S#comp=INDEX,root
+                    (✑:make-annot 
+                      :cat clause-cat 
+                      :feats (fset:map 
+                                ("comp" (format nil "~d,root" index))
+                              )
+                    )
+                    ;; (NP#comp=INDEX symb-trace)
+                    (list (✑:make-annot :cat trace-cat ) symb-trace )
+                    ;; (PP\S ,@children)
+                    (cons (✑:make-annot 
+                            :cat (🐈:make-cat
+                                    :name "\\"
+                                    :args (list trace-cat clause-cat)
+                                  )
+                          )
+                          (mapcar #'restore-empty children)
+                    )
+              )
+        )
+      )
+    )
+            
+    ( (cons node children)
+      (cons node (mapcar #'restore-empty children))
+    )
+    
+    ( otherwise tree )
+  )
+)
+
 (defun move-comp (tree &key (current-comp-info nil))
+  "Move out ingredients of a comparative construction."
   (trivia::match tree
     ;; S#comp=INDEX,root
     ( (cons (annot  (✑:cat (cat-str "S" reduced)) 
