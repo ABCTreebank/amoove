@@ -6,12 +6,44 @@
     ;; Lexical rules
     ;; ============
     
-    ;; vacuous て
-    ( (list (annot (✑::cat (cat-adjunct _ _)) )
-            "て"
+    ;; ------------
+    ;; Subjunctive coordinators
+    ;; ------------
+    ;; ので
+    ( (list (annot (✑::cat (cat-str "S\\<S/S>" _)))
+            "ので"
+      )
+      (let  ( (v-s1 (gensym "S1_"))
+              (v-s2 (gensym "S2_"))
+            )
+          `(:λ (,v-s1 ,v-s2) (:CAUSE ,v-s1 ,v-s2))
+      )
+    )
+    ( (list (annot (✑::cat (cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" _)))
+            "ので"
+      )
+      (let  ( (v-sbj (gensym "SBJ_"))
+              (v-s1 (gensym "S1_"))
+              (v-s2 (gensym "S2_"))
+            )
+          `(:λ (,v-s1 ,v-s2 ,v-sbj) (:CAUSE (,v-s1 ,v-sbj) (,v-s2 ,v-sbj)))
+      )
+    )
+        
+    ;; ;; vacuous て
+    ;; ( (list (annot (✑::cat (cat-adjunct _ _)) )
+    ;;         "て"
+    ;;   )
+    ;;   (let ( (v-x (gensym "X_")))
+    ;;     `(:λ (,v-x) ,v-x)
+    ;;   )
+    ;; )
+
+    ( (list (annot (✑::cat (cat-adjunct _ (cat-str "S"))) )
+            "た"
       )
       (let ( (v-x (gensym "X_")))
-        `(:λ (,v-x) ,v-x)
+        `(:λ (,v-x) (:PAST ,v-x) )
       )
     )
     
@@ -181,6 +213,26 @@
     ;; ============
     ;; Unary branching rules
     ;; ============
+    ;; (<PP[s]\S>'' (PP[s]\S _))
+    ;; → λvp. λsbj. (:COORD ((PP[s]\S _) sbj) (vp sbj))
+    ;; ( (list (annot (✑::cat (cat-adjunct "/" (cat-str "PP[s]\\S" _))))
+    ;;         (cons (annot (✑::cat (cat-str "PP[s]\\S" _)))
+    ;;               _
+    ;;         )
+    ;;   )
+    ;;   (let  ( (v-vp (gensym "VP_"))
+    ;;           (v-sbj (gensym "PPs_"))
+    ;;         )
+    ;;     `(:λ (,v-vp ,v-sbj)
+    ;;           (:COORD  (,(to-lambda (cadr item)) ,v-sbj)
+    ;;                    (,v-vp ,v-sbj)
+    ;;           )
+    ;;     )
+    ;;   )
+    ;; )
+    
+    ;; (NP (N _))
+    ;; → (:THE (N _))
     ( (list (annot (✑::cat (cat-str "NP" _)) )
             (cons (annot (✑::cat (cat-str "N" _)))
                   _
@@ -188,7 +240,10 @@
       )
       (list ':THE (to-lambda (cadr item)) )
     )
-      
+
+    ;; (Ns\N (NUM _))
+    ;; → λ(v-q2, v-f).
+    ;;      v-q2 $ λv-x. (NUM _) $ λv-y. (:AND (:QUANT v-x v-y) (v-f v-x) )
     ( (list (annot (✑::cat (cat-str "Ns\\N" _)))
             (cons (annot (✑::cat (cat-str "NUM" _))) 
                   _
