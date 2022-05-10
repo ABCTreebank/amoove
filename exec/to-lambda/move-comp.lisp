@@ -276,8 +276,8 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
 (defun move-comp (tree &key (current-comp-info nil))
   "Move out ingredients of a comparative construction."
   (trivia::match tree
-    ;; S#comp=INDEX,root
-    ( (cons (annot  (✑:cat (cat-str "S" reduced)) 
+    ;; _#comp=INDEX,root
+    ( (cons (annot  (✑:cat cat-reduced) ;; (✑:cat (cat-str "S" cat-reduced)) 
                     (✑:feats (comp index (list "root")) )
             )
             children
@@ -300,7 +300,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
             (append 
               (mapcar (lambda (i) 
                               (convert-prej (cdr i) 
-                                            reduced
+                                            cat-reduced
                                             new-comp-info
                               )
                       ) 
@@ -312,13 +312,13 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
             :initial-value
                 (list (✑:make-annot 
                         :cat  (make-comp-bind-cat
-                                reduced
+                                cat-reduced
                                 new-comp-info
                               )
                         :feats (fset::map ("deriv" "bind") ) 
                       )
                       (append-comp-symbols new-comp-info)
-                      (cons (✑:make-annot :cat reduced)
+                      (cons (✑:make-annot :cat cat-reduced)
                             children-transformed
                       )
                 )
@@ -326,7 +326,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
       )
     )
 
-    ;; S#comp=INDEX,cont
+    ;; _#comp=INDEX,cont
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "cont")) )
                     )
@@ -344,7 +344,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
       )
     )
                     
-    ;; S#comp=INDEX,diff
+    ;; _#comp=INDEX,diff
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "diff")))
                     )
@@ -362,7 +362,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
       )
     )
               
-    ;; S#comp=INDEX,prej
+    ;; _#comp=INDEX,prej
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "prej")))
                     )
