@@ -84,6 +84,7 @@
         :components ( 
           (:file "main")
           (:file "move-comp")
+          (:file "cli")
         )
     )
   )
