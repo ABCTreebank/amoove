@@ -53,8 +53,9 @@
     :trivia
     :trivia.ppcre
     :trivia.fset
-    :amoove
+    :yason
     :unix-opts
+    :amoove
   )
   :serial t
   :components (
@@ -62,6 +63,7 @@
       :components (
         (:file "base")
         (:file "move-comp")
+        (:file "project")
         (:file "to-lambda")
         (:file "reduce")
         (:file "cli")

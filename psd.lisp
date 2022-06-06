@@ -6,6 +6,7 @@
     alter-nodes
     pprint-tree
     filter-out-comment
+    spellout
   )
 )
 
@@ -576,5 +577,38 @@ POSTFIX specifies a string that is put after the tree."
       )
     )
     ( otherwise tree)
+  )
+)
+
+(defun spellout (tree)
+  (labels   ( (flatten (item tail)
+                (trivia::match item
+                  ( nil tail )
+                  ( (type string) (cons item tail))
+                  ( (cons _ children)
+                    (flatten-children children tail)
+                  )
+                )
+              )
+              (flatten-children (item tail)
+                (trivia::match item
+                  ;; item == NIL
+                  ( nil tail )
+                  
+                  ;; item is an atom
+                  ( (type atom)
+                    (cons item children)
+                  )
+                  
+                  ;; | child1 ...children-rest )
+                  ( (cons child1 children-rest)
+                    (flatten  child1
+                              (flatten-children children-rest tail)
+                    )
+                  )
+                )
+              )
+            )
+    (flatten tree '())
   )
 )

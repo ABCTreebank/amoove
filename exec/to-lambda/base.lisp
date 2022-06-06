@@ -78,3 +78,47 @@
   )
 )
 
+(defun add-span-overt (tree &key (index 0))
+  (declare (type integer index))
+  (match tree
+    ;; terminal nodes with an empty category
+    ( (list _ (trivia.ppcre::ppcre "^(__|\\*)" _) )
+      ;; do nothing
+    )
+    
+    ;; terminal node
+    ( (list (annot (✑:feats f)) (type string))
+      ;; add span info
+      (fset-user::adjoinf f "span.begin" index)
+      (fset-user::adjoinf f "span.end" (1+ index))
+      (setf (✑:get-feats (car tree)) f)
+      
+      ;; return
+      (1+ index)
+    )
+    
+    ;; nonterminal node
+    ( (cons (annot (✑:feats f)) children)
+      (let    ( (current-index index))
+        ;; add span to children
+        (loop for child in children do
+          (setq current-index (add-span-overt child :index current-index))
+        )
+        
+        ;; add span info
+        (fset-user::adjoinf f "span.begin" index)
+        (fset-user::adjoinf f "span.end" current-index)
+        (setf (✑:get-feats (car tree)) f)
+        
+        ;; return
+        current-index
+      )
+    )
+    
+    ;; otherwise
+    ( otherwise
+      (format *error-output* "ERROR INPUT ~a~%" tree)
+      (error "FATAL: illegal type")
+    )
+  )  
+)
