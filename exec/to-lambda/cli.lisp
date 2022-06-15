@@ -237,16 +237,25 @@
       )
     )
     ( t 
-      (let  ( (cmd (parse-subcmds-raw args))
-            )
-        (format *error-output* "Compiled program: ~a~%" cmd)
-        (eval `(lambda  ( ,*v-subcmd-id*
-                          ,*v-subcmd-tree* 
-                          &key (,*v-subcmd-jsonl* nil)
-                        ) 
-                ,@cmd
+      (let  ( (cmd `(lambda ( ,*v-subcmd-id*
+                              ,*v-subcmd-tree* 
+                              &key (,*v-subcmd-jsonl* nil)
+                            )
+                      (declare  (ignorable ,*v-subcmd-id*
+                                           ,*v-subcmd-tree*
+                                           ,*v-subcmd-jsonl*
+                                )
+                      )
+                      ,@(parse-subcmds-raw args)
+                    )
               )
-        )
+            )
+        (format *error-output* "Compiled program:
+======
+~s
+======
+" cmd)
+        (eval cmd)
       )
     )
   )
