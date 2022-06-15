@@ -401,3 +401,50 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
     ( otherwise tree )
   )
 )
+
+(defun lineralize-vars (var-list)
+  (match var-list
+    ( (cons v nil)
+      (list v)
+    )
+    ( (cons v v-rest)
+      (list v (lineralize-vars v-rest))
+    ) 
+    ( otherwise var-list )
+  )
+)
+
+(defun make-move-comp-pretty (tree)
+  "Make trees modified by MOVE-COMP prettier. Trees applied to this function cannot be fed into TO-LAMBDA and subsequent pipelines anymore."
+
+  (match tree
+    ( (guard  (cons (annot (✑:feats (comp _ comp-role-list))) 
+                    children
+              )
+              (mapcar (lambda (i) 
+                        (member i '("prej" "cont" "deg" "diff")
+                                :test #'string=
+                        )
+                      )
+                comp-role-list
+              )
+      )
+      (cons (car tree)
+            (amoove/psd:spellout tree)
+      )
+    )
+    ( (list (annot (✑:feats (fset:map ("deriv" "bind")))) 
+            vars
+            child
+      )
+      (list (car tree) 
+            (lineralize-vars vars)
+            (make-move-comp-pretty child)
+      )
+    )
+    ( (cons node children)
+      (cons node (mapcar #'make-move-comp-pretty children))
+    )
+    ( otherwise tree )
+  )
+)

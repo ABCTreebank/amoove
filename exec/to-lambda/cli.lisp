@@ -52,7 +52,9 @@
                 ;; type: ABC tree → ABC tree
                 ( "make-move-comp-pretty"
                   (values 'abc2abc
-                    `(setq ,*v-subcmd-tree* (identity ,*v-subcmd-tree*)) ;; TODO: implementation
+                    `(setq  ,*v-subcmd-tree* 
+                            (make-move-comp-pretty ,*v-subcmd-tree*)
+                    )
                   )
                 )
                 
