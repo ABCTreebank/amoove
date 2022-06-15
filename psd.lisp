@@ -584,7 +584,7 @@ POSTFIX specifies a string that is put after the tree."
   (labels   ( (flatten (item tail)
                 (trivia::match item
                   ( nil tail )
-                  ( (type string) (cons item tail))
+                  ( (type atom) (cons item tail))
                   ( (cons _ children)
                     (flatten-children children tail)
                   )
@@ -597,7 +597,7 @@ POSTFIX specifies a string that is put after the tree."
                   
                   ;; item is an atom
                   ( (type atom)
-                    (cons item children)
+                    (cons item tail)
                   )
                   
                   ;; | child1 ...children-rest )
