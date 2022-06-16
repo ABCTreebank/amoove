@@ -150,7 +150,10 @@
     (match path
       ;; STDOUT
       ( "-"
-        `(yason:encode ,*v-subcmd-jsonl* *standard-output*)
+        `(progn
+          (yason:encode ,*v-subcmd-jsonl* *standard-output*)
+          (format *standard-output* "~%")
+        )
       )
       ( otherwise
         (error "Unimplemented")
