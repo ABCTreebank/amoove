@@ -84,6 +84,8 @@
     ;; terminal nodes with an empty category
     ( (list _ (trivia.ppcre::ppcre "^(__|\\*)" _) )
       ;; do nothing
+      ;; return the same index
+      index
     )
     
     ;; terminal node
