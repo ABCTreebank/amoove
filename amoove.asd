@@ -95,3 +95,26 @@
       (symbol-call :fiveam :run! :amoove/to-lambda )
   )
 )
+
+(defsystem "amoove/to-lambda/easy-annot"
+  :description "Convert formats of the comparative annotation"
+  :version "0.0.0.0"
+  :author "Nori Hayashi <net@hayashi-lin.net>"
+  :license "to be determined"
+  :depends-on (
+    :unix-opts
+    :trivia
+    :yason
+  )
+  :serial t
+  :components (
+    (:module "exec"
+      :components (
+        (:file "to-lambda_easy-annot")
+      )
+    )
+  )
+  :build-operation "program-op"
+  :build-pathname "bin/abc2lambda-easy-annot"
+  :entry-point "amoove/to-lambda/easy-annot:main"
+)
