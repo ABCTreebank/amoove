@@ -43,6 +43,28 @@
   )
 )
 
+(defsystem "amoove/pretty-trees"
+  :description "Pretty printing Penn Treebank trees"
+  :version "0.0.0.0"
+  :author "Nori Hayashi <net@hayashi-lin.net>"
+  :license "to be determined"
+  :depends-on (
+    :amoove
+    :unix-opts
+  )
+  :serial t
+  :components (
+    (:module "exec"
+      :components (
+        (:file "pretty-trees")
+      )
+    )
+  )
+  :build-operation "program-op"
+  :build-pathname "bin/pretty-trees"
+  :entry-point "amoove/pretty-trees:main"
+)
+
 (defsystem "amoove/to-lambda"
   :description "Semantic conversion of the ABC Treebank"
   :version "0.0.0.0"
