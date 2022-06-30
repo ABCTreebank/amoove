@@ -517,48 +517,156 @@
   )
 )
 
-(defun pprint-tree  ( tree 
+
+(declaim (ftype (function (character ) fixnum) 
+                .calc-char-width
+         )
+)
+(defun .calc-char-width (c)
+  (case (sb-unicode:east-asian-width c)
+    ( (:A :W :F) 2 )
+    ( otherwise 1 )
+  )
+)
+
+(declaim (ftype (function * null) pprint-tree))
+(defun pprint-tree  ( tree
                       &key
                       (converter (lambda (i) i) )
                       (output-stream *standard-output*)
                       (id nil)
-                      (prefix "")
-                      (postfix "
-")
+                      (indent 0)
+                      (is-second-or-latter-children nil)
+                      (align-multibyte nil)
                     )
   "Pretty print a tree.
 
 CONVERTER speficies how to pretty print nodes.
-ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with that ID.
-PREFIX specifices a string that is put before the tree.
-POSTFIX specifies a string that is put after the tree."
-  (format output-stream prefix)
+ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with that ID."
+  (declare  (type (or list string symbol) tree)
+            (type (function (t) string) converter)
+            (type stream output-stream)
+            (type (or null string) id)
+            (type integer indent)
+            (type boolean is-second-or-latter-children align-multibyte)
+  )
   
-  (let          ( (stack (list tree))
-                  (current-node nil)
-                )
-    (if (stringp id) (format output-stream "( ") )
-    
-    (loop
-      (setq current-node (pop stack))
-      (trivia::match current-node
-        ( nil (return ))
-        ;; if it is a subtree
-        ( (type cons)
-          (push ")" stack)
-          (setq stack (append (.sep-by-space current-node) stack ) )
-          (push "(" stack)
+  (cond 
+    ( (stringp id)
+      (pprint-tree
+        (list tree (list "ID" id))
+        :converter converter
+        :output-stream output-stream
+        :id nil
+        :indent indent
+        :is-second-or-latter-children is-second-or-latter-children
+        :align-multibyte align-multibyte
+      )
+    )
+    ( t
+      (trivia:match tree
+        ;; a subtree with no node
+        ( (trivia:guard (cons (type cons) _)
+                        (not is-second-or-latter-children)
+          )
+          ;; assume an empty node
+          (pprint-tree (cons "" tree)
+            :converter converter
+            :output-stream output-stream
+            :id nil
+            :indent indent
+            :is-second-or-latter-children nil
+            :align-multibyte align-multibyte
+          )
         )
+        
+        ;; a subtree with a node and one or more children
+        ( (trivia:guard (cons node (cons child1 children-rest))
+                        (not is-second-or-latter-children)
+          )
+          (let* ( (node-str (funcall converter node))
+                  (node-length
+                    (if align-multibyte
+                      (reduce #'+
+                        (map  '(vector fixnum *) 
+                              #'.calc-char-width
+                              node-str
+                        )
+                      )
+                      (length node-str)
+                    )
+                  )
+                  (indent-new (+ indent node-length 2))
+                )
+            (format output-stream "(~a " node-str)
+            
+            (pprint-tree child1
+              :converter converter
+              :output-stream output-stream
+              :id id
+              :indent indent-new
+              :is-second-or-latter-children nil
+              :align-multibyte align-multibyte
+            )
+            (pprint-tree children-rest
+              :converter converter
+              :output-stream output-stream
+              :id id
+              :indent indent-new
+              :is-second-or-latter-children t
+              :align-multibyte align-multibyte
+            )
+          )
+        )
+        
+        ;; a subtree with no children
+        ( (trivia:guard (cons node nil)
+                        (not is-second-or-latter-children)
+          )
+          (format output-stream 
+                  "(~a )"
+                  (funcall converter node)
+          )
+        )
+        
+        ;; a non-empty list of second or latter children
+        ( (trivia:guard (cons child1 children-rest)
+                        is-second-or-latter-children
+          )
+          ;; https://stackoverflow.com/a/24758778
+          (format output-stream "~%~v@{~c~:*~}" indent #\ )
+          (pprint-tree child1
+            :converter converter
+            :output-stream output-stream
+            :id id
+            :indent indent
+            :is-second-or-latter-children nil
+            :align-multibyte align-multibyte
+          )
+          (pprint-tree children-rest
+            :converter converter
+            :output-stream output-stream
+            :id id
+            :indent indent
+            :is-second-or-latter-children t
+            :align-multibyte align-multibyte
+          )
+        )
+        
+        ;; an empty list of children
+        ( (trivia:guard nil
+                        is-second-or-latter-children
+          )
+          (format output-stream ")")
+        )
+        
+        ;; otherwise (in most case, a lexical node)
         ( otherwise
-          (format output-stream "~a" (funcall converter current-node) )
+          (format output-stream "~a" (funcall converter tree) )
         )
       )
-    ) ;; end loop
-    
-    (if (stringp id) (format output-stream " (ID ~a))" id) )
-  ) ;; end let stack, current-node
-  
-  (format output-stream postfix)
+    )
+  )
 )
 
 (defun  filter-out-comments

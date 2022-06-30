@@ -134,9 +134,14 @@
     (match path
       ;; STDOUT
       ( "-"
-        `(amoove/psd::pprint-tree ,*v-subcmd-tree*
+        `(progn
+          (amoove/psd::pprint-tree ,*v-subcmd-tree*
             :converter #'pprint-abc-node
+            :output-stream *standard-output*
             :id ,*v-subcmd-id*
+            :align-multibyte t
+          )
+          (format *standard-output* "~%~%")
         )
       )
       ( otherwise
