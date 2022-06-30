@@ -13,11 +13,11 @@
 (in-package :amoove/psd)
 
 (defstruct (token (:conc-name get-) )
-  (content nil)
-  (start-line 0)
-  (start-col 0)
-  (end-line 0)
-  (end-col 0)
+  (content nil :type (or nil symbol string))
+  (start-line 0 :type integer)
+  (start-col 0 :type integer)
+  (end-line 0 :type integer)
+  (end-col 0 :type integer)
 )
 
 ;; https://stackoverflow.com/a/10675447
@@ -284,12 +284,16 @@
   (is-terminal nil)
 )
 
+;; (declaim  (ftype  (function (stream &key (buf-size fixnum)) 
+;;                             t
+;;                   )
+;;                   get-parser
+;;           )
+;; )
 (defun get-parser (strm &key (buf-size 100))
   "Generate an ABC tree parser on the fly.
   BUF-SIZE is the size of the buffer that holds nodes. 
   "
-  ;; (declare strm stream)
-  ;; (declare buf-size int)
   (get-parser-via-tokenizer (get-tokenizer strm :buf-size buf-size))
 )
 
@@ -338,7 +342,12 @@
 ;;   )
 ;; )
 
-
+(declaim  (ftype  (function (list &key (pred (function (string) boolean)))
+                            (values (or nil string) list)
+                  )
+                  split-ID
+          )
+)
 (defun split-ID ( tree 
                   &key (pred (lambda (i) (string= i "ID")))
                 )
