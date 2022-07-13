@@ -5,7 +5,35 @@
   (defvar *v-subcmd-tree* (gensym "tree_"))
   (defvar *v-subcmd-jsonl* (gensym "jsonl_"))
 )
-  
+ 
+(define-condition tree-manupilation-error (base-error)
+  ( (ID :initarg :ID 
+        :initform "<NOT GIVEN>"
+        :type string 
+        :reader get-sentence-ID
+    )
+  )
+)
+
+(define-condition parse-label-error (tree-manupilation-error)
+  ( (inner-error :initarg :inner-error
+                 :initform nil 
+                 :type (or null condition) 
+                 :reader get-inner-error
+    )
+  )
+  (:report 
+    (lambda (c strm)
+      (format strm 
+              "Error in parsing labels in Tree [ID: ~a].~%Details: ~a~&"
+              (get-sentence-ID c)
+              (get-inner-error c)
+      )
+    )
+  )
+  (:documentation "Error when the parser encounters a broken label")
+)
+
 (defun annotate-subcmds (args)
   (let  ( (pointer args) 
           (expect-next nil) 
@@ -346,36 +374,55 @@ Examples:
             ;; fetch the next tree
             (setq tree-raw (funcall *iter-abc-tree-raw*))
             
-            (cond 
-              ;; if tree is nil
-              ( (null tree-raw)
+            (match tree-raw
+              ( nil
                 ;; hit the end of the stream
                 ;; end the loop
                 (return )
               )
               
-              ;; if tree is indeed a tree
-              ( (consp tree-raw)
+              ;; if TREE-RAW is indeed a tree
+              ( (type cons)
                 ;; try extracting its ID
                 (multiple-value-bind  (id tree)
                                       (amoove/psd::split-ID tree-raw)
-                  ;; filter out comments
-                  (setq tree (amoove/psd::filter-out-comments tree) )
-                  
-                  ;; parse categories and annotations
-                  (funcall *alter-parse-abc-tree-nodes* tree)
-                  
-                  ;; do the specified actions
-                  (funcall action id tree)
+                  (restart-case 
+                    (progn
+                        ;; filter out comments
+                        (setq tree (amoove/psd::filter-out-comments tree) )
+                        
+                        ;; parse categories and annotations
+                        (handler-case 
+                          (funcall *alter-parse-abc-tree-nodes* tree)
+                          
+                          (error (c)
+                            (error  (make-condition 'parse-label-error 
+                                      :ID id 
+                                      :inner-error c
+                                    )
+                            )
+                          )
+                        )
+                        
+                        ;; do the specified actions
+                        (funcall action id tree)
+                    )
+                    
+                    (skip-tree () 
+                      :report 
+                        (lambda (strm)
+                                (format strm "Skip this tree [ID: ~a]." id)
+                        )
+                    )
+                  ) ;; END restart-case
                 )
               )
-              
-              ;; otherwise: error
-              ( t 
+
+              ( otherwise
                 (error (format nil "Illegal input: ~a~%" tree-raw) )
               )
             )
-          )
+          ) ;; END loop
         )
       )
     )

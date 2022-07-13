@@ -124,3 +124,7 @@
     )
   )  
 )
+
+(define-condition base-error (error) 
+  ()
+)
