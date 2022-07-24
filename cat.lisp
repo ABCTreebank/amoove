@@ -18,12 +18,12 @@
 )
 
 (in-package :amoove/cat)
-  
+
 (defstruct (cat (:conc-name get-))
   "Represent an ABC category."
   (name "⊥" :type string)
-  (args '())
-  (feats (fset-user::empty-map ) )
+  (args '() :type list)
+  (feats (fset-user::empty-map ))
 )
 
 (defmethod make-load-form

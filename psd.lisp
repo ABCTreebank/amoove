@@ -31,8 +31,7 @@
             v-end-line
             v-end-col
           )
-    (let*         ( 
-                    (symb-char (coerce symb 'character))
+    (let*         ( (symb-char (coerce symb 'character))
                     (reset-span 
                       (if (find symb-char "
 ")
@@ -136,6 +135,12 @@
                       (,v-end-line 1)
                       (,v-end-col 1)
                   )
+        (declare  (type (array character) ,v-buf)
+                  (type integer 
+                        ,v-start-line ,v-start-col
+                        ,v-end-line ,v-end-col
+                  )
+        )
         (lambda   ()
           ;; http://diary.wshito.com/comp/lisp/peek-char/
           (let      ( (next-char-peeked (peek-char nil ,strm nil) ) )
@@ -281,15 +286,15 @@
 
 (defstruct (node-info (:constructor get-))
   (node nil)
-  (is-terminal nil)
+  (is-terminal nil :type boolean)
 )
 
-;; (declaim  (ftype  (function (stream &key (buf-size fixnum)) 
-;;                             t
-;;                   )
-;;                   get-parser
-;;           )
-;; )
+(declaim  (ftype  (function (stream &key (:buf-size (integer 0 *)))
+                            *
+                  )
+                  get-parser
+          )
+)
 (defun get-parser (strm &key (buf-size 100))
   "Generate an ABC tree parser on the fly.
   BUF-SIZE is the size of the buffer that holds nodes. 
@@ -711,12 +716,12 @@ ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with
                 (trivia::match item
                   ;; item == NIL
                   ( nil tail )
-                  
+
                   ;; item is an atom
                   ( (type atom)
                     (cons item tail)
                   )
-                  
+
                   ;; | child1 ...children-rest )
                   ( (cons child1 children-rest)
                     (flatten  child1

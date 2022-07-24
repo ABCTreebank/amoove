@@ -15,7 +15,7 @@
 
 (defstruct (annot (:conc-name get-))
   "Represent a meta-tag of ABC non-terminal categories."
-  (cat nil)
+  (cat nil :type (or null amoove/cat:cat))
   (feats (fset-user::empty-map))
 )
 

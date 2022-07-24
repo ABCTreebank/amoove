@@ -19,6 +19,7 @@
           `(:λ (,v-s1 ,v-s2) (:CAUSE ,v-s1 ,v-s2))
       )
     )
+
     ( (list (annot (✑::cat (cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" _)))
             "ので"
       )
@@ -29,7 +30,7 @@
           `(:λ (,v-s1 ,v-s2 ,v-sbj) (:CAUSE (,v-s1 ,v-sbj) (,v-s2 ,v-sbj)))
       )
     )
-        
+
     ;; ;; vacuous て
     ;; ( (list (annot (✑::cat (cat-adjunct _ _)) )
     ;;         "て"
@@ -46,7 +47,7 @@
         `(:λ (,v-x) (:PAST ,v-x) )
       )
     )
-    
+
     ( (list (annot (✑::cat (cat-adjunct "\\" (cat-str "PP\\S" _))))
             "あげ"
       )
@@ -56,9 +57,9 @@
         `(:λ (,v-verb ,v-sbj) (:AND (,v-verb ,v-sbj) (:HELPER ,v-sbj)))
       )
     )
-    
+
     ;; より
-    ( (cons (annot  (✑::feats 
+    ( (cons (annot  (✑::feats
                       (fset::map ("lexspec" (lexspec-yori n-cont n-diff) ) )
                     )
             )
@@ -147,7 +148,7 @@
       )
       `(:λ ,vars ,(to-lambda base))
     )
-    
+
     ;; slash elmination
     ( (guard 
         (list (annot (✑::feats feats) )
@@ -161,6 +162,7 @@
                                 )
         (multiple-value-bind  (result-cat result-detail) 
                               (reduce-cat cat1 cat2)
+          (declare (ignore result-cat))
           (match result-detail
             ;; if the reduction is successful
             ( (reduce-result (🐈::reduction (or "|<" "<") ) (🐈::level l) )
@@ -181,7 +183,7 @@
                 )
               )
             )
-            
+
             ( (reduce-result (🐈::reduction (or "|>" ">")) (🐈::level l) )
               (cond 
                 ( (zerop l) 
@@ -200,7 +202,7 @@
                 )
               )
             )
-            
+
             ;; if the reduction fails
             ( otherwise
               (list ':LEAVE (mapcar #'to-lambda (cdr item)))
@@ -209,7 +211,7 @@
         )
       )
     )
-    
+
     ;; ============
     ;; Unary branching rules
     ;; ============
@@ -230,7 +232,7 @@
     ;;     )
     ;;   )
     ;; )
-    
+
     ;; (NP (N _))
     ;; → (:THE (N _))
     ( (list (annot (✑::cat (cat-str "NP" _)) )
@@ -265,7 +267,7 @@
         )
       )
     )
-    
+
     ( (list (annot (✑::cat (or (cat-str "N/N" _)
                                 (cat-str "NP/NP" _)
                             )
@@ -290,11 +292,11 @@
         )
       )
     )
-    
+
     ;; the fallback rule
     ;; just remove the branching
     ( (list _ child) (to-lambda child) )
-    
+
     ;; ============
     ;; Zero branching
     ;; ============

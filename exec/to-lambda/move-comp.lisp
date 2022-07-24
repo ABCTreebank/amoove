@@ -69,7 +69,7 @@
   )
 )
 
-(trivia::defpattern lexspec-yori (num-contrast num-difference)
+(trivia:defpattern lexspec-yori (num-contrast num-difference)
   (let  ( (v-item (gensym "item_"))
           (v-item-parsed (gensym "item-parsed_"))
         )
@@ -218,7 +218,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
         )
       )
     )
-        
+
     ;; <PP\S> or <NP\S>#comp=INDEX,root
     ( (cons (annot (✑:cat (🐈:cat
                             (🐈:name "\\")
@@ -330,7 +330,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "cont")) )
                     )
-                    children
+                    _
               )
               (and  (comp-info-p current-comp-info)
                     (= index (get-index current-comp-info))
@@ -343,12 +343,12 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
         (list (✑:make-annot :cat c) symb)
       )
     )
-                    
+
     ;; _#comp=INDEX,diff
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "diff")))
                     )
-                    children
+                    _
               )
               (and  (comp-info-p current-comp-info)
                     (= index (get-index current-comp-info))
@@ -361,12 +361,12 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
         (list (✑:make-annot :cat c) symb)
       )
     )
-              
+
     ;; _#comp=INDEX,prej
     ( (guard  (cons (annot  (✑:cat c) 
                             (✑:feats (comp index (list "prej")))
                     )
-                    children
+                    _
               )
               (and  (comp-info-p current-comp-info)
                     (= index (get-index current-comp-info))
@@ -419,7 +419,7 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
 
   (match tree
     ( (guard  (cons (annot (✑:feats (comp _ comp-role-list))) 
-                    children
+                    _
               )
               (mapcar (lambda (i) 
                         (member i '("prej" "cont" "deg" "diff")
