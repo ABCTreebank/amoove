@@ -10,7 +10,9 @@
     :yacc
     :function-cache
   )
+  :serial t
   :components (
+    (:file "base")
     (:file "cat")
     (:file "annot")
     (:file "psd")

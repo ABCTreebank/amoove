@@ -1,6 +1,11 @@
 (defpackage :amoove/psd
   (:use :cl)
   (:export
+    penntree-parse-error
+    unexpected-token
+    trailing-parenthesis
+    unclosed-parenthesis
+
     get-parser
     split-ID
     alter-nodes
@@ -12,12 +17,76 @@
 
 (in-package :amoove/psd)
 
+(define-condition penntree-parse-error (amoove:base-error)
+  ( (file-name  :type string 
+                :initarg :file-name
+                :initform "<UNKNOWN>"
+                :accessor get-file-name
+    )
+  )
+)
+
+(define-condition unexpected-token (penntree-parse-error)
+  ( (token-info :type token
+                :initarg :token-info
+                :accessor get-token-info
+    )
+  )
+  (:report
+    (lambda (c strm)
+      (format strm "Unexpected token in parsing.
+Token info: ~a
+File: ~a"
+        (get-token-info c)
+        (get-file-name c)
+      )
+    )
+  )
+)
+
+(define-condition trailing-parenthesis (unexpected-token)
+  ()
+  (:report
+    (lambda (c strm)
+      (format strm "Trailing parenthesis found in parsing.
+Token info: ~a
+File: ~a"
+        (get-token-info c)
+        (get-file-name c)
+      )
+    )
+  )
+)
+
+(define-condition unclosed-parenthesis (penntree-parse-error)
+  ()
+  (:report
+    (lambda (c strm)
+      (format strm "Parenthesis not closed at the EOF. File: ~a"
+        (get-file-name c)
+      )
+    )
+  )
+)
+
 (defstruct (token (:conc-name get-) )
   (content nil :type (or nil symbol string))
   (start-line 0 :type integer)
   (start-col 0 :type integer)
   (end-line 0 :type integer)
   (end-col 0 :type integer)
+)
+
+(defmethod print-object ((obj token) strm)
+  (print-unreadable-object (obj strm :type t :identity nil)
+    (format strm "~s, position: (~d, ~d) -- (~d, ~d)"
+      (get-content obj)
+      (get-start-line obj)
+      (get-start-col obj)
+      (get-end-line obj)
+      (get-end-col obj)
+    )
+  )
 )
 
 ;; https://stackoverflow.com/a/10675447
@@ -191,93 +260,133 @@
   )
 )
 
+(declaim (ftype (function ( (function () (or null token)) )
+                          (function () list)
+                )
+                get-parser-via-tokenizer
+         )
+)
 (defun get-parser-via-tokenizer (tokenizer)
   (let    ( (root nil)
             (stack '()) )
+    (declare  (type list root stack))
     (lambda ()
       (loop
         (let*   ;; get next token
                 ( (token (funcall tokenizer)) 
                   (token-content (if (null token) nil (get-content token)) ) 
                 )
-            (cond 
-              ( (eq token-content :PAREN-LEFT)
-                (cond 
+          (declare (type (or null token) token)
+                    (type (or null symbol string) token-content)
+          )
+          (cond
+            ;; match a (
+            ( (eq token-content :PAREN-LEFT)
+              (cond 
+                ( (null root)
+                  (setf root (cons nil nil))
+                  (push root stack)
+                )
+                ( t 
+                  (let*   ( (subtree (cons nil nil))
+                            (parent-new (cons subtree nil))
+                            (parent-old (pop stack))
+                          )
+                      (if (null (car parent-old))
+                          (setf (car parent-old) (make-string 0)) )
+                      (setf (cdr parent-old) parent-new)
+                      (push parent-new stack)
+                      (push subtree stack)
+                  )
+                )
+              )
+            )
+
+            ;; match a )
+            ( (eq token-content :PAREN-RIGHT)
+              (cond 
+                ( (null stack)
+                  (restart-case (error 'trailing-parenthesis :token-info token )
+                    (ignore-parenthesis ()
+                      :report "Ignore that parenthesis"
+
+                      nil
+                    )
+                  )
+                )
+                (t 
+                  (pop stack) ;; close the subtree
+                  (when (null stack)
+                      ;; if the tree is totally closed then yield the root
+                      (let ( (yield root))
+                        (setf root nil)
+                        (return yield)
+                      )
+                  )
+                )
+              )
+            )
+
+            ;; match a string 
+            ( (stringp token-content)
+              (cond
                   ( (null root)
-                    (setf root (cons nil nil))
-                    (push root stack)
+                    (return (cons token-content nil))
                   )
                   ( t 
-                    (let*   ( (subtree (cons nil nil))
-                              (parent-new (cons subtree nil))
-                              (parent-old (pop stack))
+                    (let*   ( (pointer (pop stack))
                             )
-                        (if (null (car parent-old))
-                            (setf (car parent-old) (make-string 0)) )
-                        (setf (cdr parent-old) parent-new)
-                        (push parent-new stack)
-                        (push subtree stack)
-                    )
-                  )
-                )
-              )
-              ( (eq token-content :PAREN-RIGHT)
-               ()
-                (pop stack) ;; close the subtree
-                (when (null stack)
-                    ;; if the tree is totally closed then yield the root
-                    (let ( (yield root))
-                      (setf root nil)
-                      (return yield)
-                    )
-                )
-              )
-              ( (stringp token-content)
-                (cond
-                    ( (null root)
-                      (return (cons token-content nil))
-                    )
-                    ( t 
-                      (let*   ( (pointer (pop stack))
-                              )
-                          (cond
-                            ;; the pointer is empty
-                            ;; fill it with the strong
-                            ( (null (car pointer))
-                              (setf (car pointer) token-content)
-                              (push pointer stack)
-                            )
-                            ;; otherwise
-                            ;; create a child
-                            ( t 
-                              (let   ( (new-child (cons token-content nil)) )
-                                  (setf (cdr pointer) new-child)
-                                  (push new-child stack)
-                              )
+                        (cond
+                          ;; the pointer is empty
+                          ;; fill it with the strong
+                          ( (null (car pointer))
+                            (setf (car pointer) token-content)
+                            (push pointer stack)
+                          )
+                          ;; otherwise
+                          ;; create a child
+                          ( t 
+                            (let   ( (new-child (cons token-content nil)) )
+                                (setf (cdr pointer) new-child)
+                                (push new-child stack)
                             )
                           )
-                      )
+                        )
                     )
-                )
-              )
-              ;; end of the token stream
-              ( (null token-content)
-                (if (null root)
-                    (return nil) ;; signal EOS
-                    (error "Tree remain unclosed"))
-              )
-              ( t (error (format 
-                            nil 
-                            "Incorrect token type. Token pos: (~d , ~d) -- (~d , ~d). Token repr: ~s"
-                            (get-start-line token)
-                            (get-start-col token)
-                            (get-end-line token)
-                            (get-end-col token)
-                            (string token-content)
-                          )
                   )
               )
             )
+
+            ;; end of the token stream
+            ( (null token-content)
+              (cond 
+                ( (null root)
+                  ;; signal EOS
+                  (return nil)
+                )
+                (t
+                  (restart-case (error 'unclosed-parenthesis)
+                    (supplement-parenthesis ()
+                      :report "Supplement a closing parenthesis and complete the file."
+                      ;; treat as EOS
+                      (return nil)
+                    )
+                  )
+                )
+              )
+            )
+
+            ;; otherwise 
+            ( t
+              (restart-case (error 'unexpected-token :token-info token )
+                (ignore-token ()
+                  :report "Ignore that token"
+
+                  nil
+                )
+              )
+            )
+          )
         )
       )
     ) ;; end of lambda
@@ -347,8 +456,8 @@
 ;;   )
 ;; )
 
-(declaim  (ftype  (function (list &key (pred (function (string) boolean)))
-                            (values (or nil string) list)
+(declaim  (ftype  (function (list &key (:pred (function (string) boolean)))
+                            (values (or null string) list)
                   )
                   split-ID
           )
