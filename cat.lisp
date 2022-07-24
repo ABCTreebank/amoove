@@ -3,7 +3,7 @@
   (:export 
     cat
     name args feats 
-    get-name -getargs get-feats
+    get-name get-args get-feats
     make-cat
     uncurry-cat
     ;; trivia patterns
