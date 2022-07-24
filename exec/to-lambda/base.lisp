@@ -35,10 +35,11 @@
       `(fset-user::map ,@map-list )
     )
   )
-  
-  (trivia::in-optimizer :balland2006)
-  (setq trivia.balland2006::*optimization-timeout* 10)
-  (setq trivia.balland2006::*grounding-clause-limit* 2000)
+
+  (trivia::in-optimizer :trivial)
+  ;; (trivia::in-optimizer :balland2006)
+  ;; (setq trivia.balland2006::*optimization-timeout* 10)
+  ;; (setq trivia.balland2006::*grounding-clause-limit* 2000)
 )
 
 (defparameter *iter-abc-tree-raw*

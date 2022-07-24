@@ -54,11 +54,22 @@
 
 (trivia::defpattern cat-adjunct (dir radical)
   "Match an adjunct category.
-   DIR matches its functor type.
-   RADICAL matches its categorial radical."
-  `(trivia::guard 
-      (cat (name ,dir) (args (list r1 r2) ) )
-      (equalp r1 r2)
+  DIR matches its functor type.
+  RADICAL matches its categorial radical."
+  (let      ( (item (gensym "item_"))
+              (args (gensym "args_"))
+            )
+    `(trivia:guard1 ,item (cat-p ,item)
+      (get-name ,item) ,dir
+      (get-args ,item)
+      (trivia:guard1 ,args 
+        (and  (listp ,args)
+              (= (length ,args) 2)
+              (equalp (cadr ,args) (caddr ,args))
+        )
+        (cadr ,args) ,radical
+      )
+    )
   )
 )
 
