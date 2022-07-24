@@ -40,7 +40,7 @@
     ;;   )
     ;; )
 
-    ( (list (annot (✑::cat (cat-adjunct _ (cat-str "S"))) )
+    ( (list (annot (✑::cat (cat-adjunct _ (cat-str "S" _))) )
             "た"
       )
       (let ( (v-x (gensym "X_")))
