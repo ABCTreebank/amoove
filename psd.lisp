@@ -10,7 +10,7 @@
     split-ID
     alter-nodes
     pprint-tree
-    filter-out-comment
+    split-comments
     spellout
   )
 )
@@ -607,7 +607,11 @@ File: ~a"
               
               ;; otherwise: ,v-subtree is not a tree
               ( otherwise
-                (error "Invalid type. A tree (a cons cell) is required.")
+                (error  (format nil 
+                                "~a has the wrong type. It is expected to be a tree (a cons cell)."
+                                ,v-subtree
+                        )
+                )
               )
             ) ;; end trivia::match
           ) ;; end let
@@ -783,31 +787,41 @@ ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with
   )
 )
 
-(defun  filter-out-comments
-        ( tree 
-          &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
-        )
-  "Filter out 'COMMENT' nodes from TREE."
-  (trivia::match tree 
-    ( (cons head tail)
-      (trivia::match head
-        ( (trivia::guard  (cons node _)
-                          (funcall node-pred node)
+(declaim  (ftype (function * (values (or list string symbol) list))
+          split-comments
           )
-          (let  ( (result (filter-out-comments tail :node-pred node-pred))
-                )
-            (cond 
-              ( (= (length result) 1) (car result) )
-              ( t result)
-            )
+)
+(defun  split-comments
+        ( tree
+        &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
+        )
+        "Tease out 'COMMENT' nodes from TREE."
+  (declare (type (or list string symbol) tree)
+           (type (function (string) t) node-pred)
+  )
+
+  (trivia::match tree
+    ( (trivia::guard (cons (list comment-node comment) tail)
+                     (funcall node-pred comment-node)
+      )
+      (multiple-value-bind  (tail-without-comment tail-comments)
+                            (split-comments tail :node-pred node-pred)
+        (trivia::match tail-without-comment
+          ( (cons child nil)
+            (setf tail-without-comment child)
           )
         )
-        ( otherwise
-          (cons head (filter-out-comments tail :node-pred node-pred) )
-        )
+        
+        (values tail-without-comment (cons comment tail-comments))
       )
     )
-    ( otherwise tree)
+    ( (cons head tail)
+      (multiple-value-bind  (tail-without-comment tail-comments)
+                            (split-comments tail :node-pred node-pred)
+        (values (cons head tail-without-comment) tail-comments)
+      )
+    )
+    ( otherwise (values tree nil) )
   )
 )
 

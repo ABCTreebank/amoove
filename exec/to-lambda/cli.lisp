@@ -2,6 +2,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *v-subcmd-id* (gensym "id_"))
+  (defvar *v-subcmd-comments* (gensym "comments_"))
   (defvar *v-subcmd-tree* (gensym "tree_"))
   (defvar *v-subcmd-jsonl* (gensym "jsonl_"))
 )
@@ -35,6 +36,7 @@
 )
 
 (defun annotate-subcmds (args)
+  "From ARGS, give a generator that yields "
   (let  ( (pointer args) 
           (expect-next nil) 
         )
@@ -54,11 +56,15 @@
         )
         ( otherwise 
           (match pointer
-            ( nil 
-              (values nil nil)
-            )
+            ;; if ARGS is empty
+            ( nil (values nil nil) )
+
+            ;; if ARGS has words
             ( (cons subcmd rest)
+              ;; shift the pointer
               (setq pointer rest)
+
+              ;; match the current word
               (match subcmd
                 ;; restore empty categories
                 ;; type: ABC tree → ABC tree
@@ -96,10 +102,13 @@
                         (setq ,*v-subcmd-jsonl* (make-hash-table :test #'equal))
                         (setf (gethash "ID" ,*v-subcmd-jsonl*)
                               ,*v-subcmd-id*
-                              (gethash "text" ,*v-subcmd-jsonl*) 
-                              (format nil "~{~a~}" tree-token-list)
+
+                              (gethash "comp-tags" ,*v-subcmd-jsonl*)
+                              (extract-comparative-metainfo ,*v-subcmd-comments*)
+
                               (gethash "tokens" ,*v-subcmd-jsonl*)
                               tree-token-list
+
                               (gethash "comp" ,*v-subcmd-jsonl*)
                               (extract-comp ,*v-subcmd-tree*)
                         )
@@ -155,7 +164,6 @@
   )
 )
 
-  
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun gen-write-cmd (w path)
     (declare (ignore w))
@@ -262,29 +270,54 @@
   )
 )
 
+(declaim (ftype (function *
+                          ; returns
+                          (function ( string ; *v-subcmd-id*
+                                      list ; *v-subcmd-comments*
+                                      (or list string symbol) ; *v-subcmd-tree
+                                      (or null hash-table) ; *v-subcmd-jsonl*
+                                    )
+                                    ; returns
+                                    null 
+                          )
+                )
+                parse-subcmds
+         )
+)
 (defun parse-subcmds (args)
   "Parse subcmds in ARGS and assembly a function doing what the subcmds require."
+  (declare (type list args))
   (cond 
     ( (zerop (length args))
       (eval `(lambda  ( ,*v-subcmd-id*
+                        ,*v-subcmd-comments*
                         ,*v-subcmd-tree* 
-                        &key (,*v-subcmd-jsonl* nil)
+                        ,*v-subcmd-jsonl*
                       )
-              (declare (ignore ,*v-subcmd-id* ,*v-subcmd-tree* ,*v-subcmd-jsonl*))
+              (declare (ignore  ,*v-subcmd-id* 
+                                ,*v-subcmd-comments*
+                                ,*v-subcmd-tree* 
+                                ,*v-subcmd-jsonl*
+                        )
+              )
+              nil
             )
       )
     )
     ( t 
       (let  ( (cmd `(lambda ( ,*v-subcmd-id*
+                              ,*v-subcmd-comments*
                               ,*v-subcmd-tree* 
-                              &key (,*v-subcmd-jsonl* nil)
+                              ,*v-subcmd-jsonl*
                             )
                       (declare  (ignorable ,*v-subcmd-id*
+                                           ,*v-subcmd-comments*
                                            ,*v-subcmd-tree*
                                            ,*v-subcmd-jsonl*
                                 )
                       )
                       ,@(parse-subcmds-raw args)
+                      nil
                     )
               )
             )
@@ -357,9 +390,10 @@ subcmd list:
 - write [ - | PATH ]
 - write-jsonl [ - | PATH ]
 
-Examples:
-- restore-empty translate reduce
-- restore-empty write - translate write -
+Useful idioms:
+- restore-empty move-comp make-move-comp-pretty write -
+- restore-empty move-comp translate reduce write -
+- project-comp write-jsonl -
 "
         )
       )
@@ -383,14 +417,13 @@ Examples:
               
               ;; if TREE-RAW is indeed a tree
               ( (type cons)
-                ;; try extracting its ID
-                (multiple-value-bind  (id tree)
+                ;; try extracting its ID and comments
+                (multiple-value-bind  (id tree-with-comments)
                                       (amoove/psd::split-ID tree-raw)
                   (restart-case 
-                    (progn
-                        ;; filter out comments
-                        (setq tree (amoove/psd::filter-out-comments tree) )
-                        
+                      ;; filter out comments
+                      (multiple-value-bind  (tree comments)
+                                            (amoove/psd::split-comments tree-with-comments)
                         ;; parse categories and annotations
                         (handler-case 
                           (funcall *alter-parse-abc-tree-nodes* tree)
@@ -405,8 +438,13 @@ Examples:
                         )
                         
                         ;; do the specified actions
-                        (funcall action id tree)
-                    )
+                        (funcall  action 
+                                  id 
+                                  comments 
+                                  tree 
+                                  nil ; jsonl-object
+                        )
+                      )
                     
                     (skip-tree () 
                       :report 
