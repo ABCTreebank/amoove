@@ -381,19 +381,28 @@
           :suffix "Specify subcmds as arguments to make a conversion pipeline. 
 
 subcmd list:
-- restore-empty
-- move-comp
-- make-move-comp-pretty
-- translate
-- reduce
-- project-comp
-- write [ - | PATH ]
-- write-jsonl [ - | PATH ]
+- restore-empty (ABC → ABC)
+- move-comp (ABC → ABC)
+- make-move-comp-pretty (ABC → ABC)
+- adjust-rc (ABC → ABC)
+- translate (ABC → sem)
+- reduce (sem → sem)
+- project-comp (ABC → json)
+- write [ - | PATH ] (ABC | sem → nil)
+- write-jsonl [ - | PATH ] (json → nil)
 
-Useful idioms:
-- restore-empty move-comp make-move-comp-pretty write -
-- restore-empty move-comp translate reduce write -
-- project-comp write-jsonl -
+TLDR:
+- To make LF representations:
+  restore-empty move-comp write -
+
+- To make prettified LF trees
+  restore-empty move-comp make-move-comp-pretty write -
+
+- To gain semantic representations:
+  restore-empty move-comp translate reduce write -
+
+- To extract comparative annotations on a string basis:
+  project-comp write-jsonl -
 "
         )
       )
