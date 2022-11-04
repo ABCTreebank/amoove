@@ -57,31 +57,3 @@
     (ext-root tree '())
   )
 )
-
-(declaim (ftype (function * hash-table)
-                extract-metainfo
-         )
-)
-(defun extract-comparative-metainfo (comments)
-  (declare (type list comments))
-
-  (let ( (result (make-hash-table :test #'equal))
-       )
-    (loop for com in comments do
-      (trivia::match com
-        ( (trivia.ppcre::ppcre "typical")
-          (setf (gethash "is-typical" result) t)
-        )
-      )
-
-      (trivia::match com
-        ( (trivia.ppcre::ppcre "(green\\??|yellow|red|捨てる)" label)
-          (setf (gethash "grade" result) label)
-        )
-      )
-      ;; TODO: add more patterns
-    )
-    ;; return
-    result
-  )
-)

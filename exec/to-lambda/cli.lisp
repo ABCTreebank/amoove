@@ -103,8 +103,10 @@
                         (setf (gethash "ID" ,*v-subcmd-jsonl*)
                               ,*v-subcmd-id*
 
-                              (gethash "comp-tags" ,*v-subcmd-jsonl*)
-                              (extract-comparative-metainfo ,*v-subcmd-comments*)
+                              (gethash "comments" ,*v-subcmd-jsonl*)
+                              (loop for li in ,*v-subcmd-comments*
+                                    append (ppcre:split ";" li)
+                              )
 
                               (gethash "tokens" ,*v-subcmd-jsonl*)
                               tree-token-list

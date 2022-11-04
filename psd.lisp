@@ -795,26 +795,44 @@ ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with
         ( tree
         &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
         )
-        "Tease out 'COMMENT' nodes from TREE."
+        "Tease out 'COMMENT' nodes from TREE.
+
+NODE-PRED specifies comment node labels.
+The function returns a pair of the tree without comments and the comments teased apart.
+        "
   (declare (type (or list string symbol) tree)
            (type (function (string) t) node-pred)
   )
 
   (trivia::match tree
+    ;; ( (COMMENTS {...}) ...tail )
     ( (trivia::guard (cons (list comment-node comment) tail)
                      (funcall node-pred comment-node)
       )
+      ;; rip off braces tf there are
+      (trivia:match comment
+        ( (trivia.ppcre:ppcre "^{(.*)}$" contents)
+          (setf comment contents)
+        )
+      )
+
+      ;; tail → (tail-without-comment, comments)
       (multiple-value-bind  (tail-without-comment tail-comments)
                             (split-comments tail :node-pred node-pred)
-        (trivia::match tail-without-comment
+        (trivia:match tail-without-comment
+          ;; if tail-without-comment is a singleton list '( child )
           ( (cons child nil)
+            ;; peel off the outer superfluous list
             (setf tail-without-comment child)
           )
         )
-        
+
+        ;; return the commentless tree 
+        ;; and the list of comments
         (values tail-without-comment (cons comment tail-comments))
       )
     )
+    
     ( (cons head tail)
       (multiple-value-bind  (tail-without-comment tail-comments)
                             (split-comments tail :node-pred node-pred)
