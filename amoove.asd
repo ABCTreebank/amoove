@@ -119,3 +119,34 @@
       (symbol-call :fiveam :run! :amoove/to-lambda )
   )
 )
+
+(defsystem "amoove/comp-conv"
+  :description "A format conversion tool for ABC comparative annotations"
+  :version "0.0.0.0"
+  :author "Nori Hayashi <net@hayashi-lin.net>"
+  :license "to be determined"
+  :depends-on (
+    :cl-argparse
+    :iterate
+    :fset
+    :trivia
+    :trivia.ppcre
+    :trivia.fset
+    :yason
+    :amoove
+  )
+  :serial t
+  :components (
+    (:module "exec"
+      :components (
+        (:file "comp-conv")
+      )
+    )
+  )
+  :build-operation "program-op"
+  :build-pathname "bin/abc-comp-conv"
+  :entry-point "amoove/comp-conv:main"
+  ;; :in-order-to (
+  ;;   (test-op (test-op amoove/to-lambda/test))
+  ;; )
+)
