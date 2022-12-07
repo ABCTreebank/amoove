@@ -92,33 +92,6 @@
                   )
                 )
                 
-                ;; project comparative annotations onto strings
-                ;; type: ABC tree → hashtable (for yason)
-                ( "project-comp"
-                  (values 'abc2jsonl
-                    `(progn
-                      (let ( (tree-token-list (amoove/psd:spellout ,*v-subcmd-tree*)))
-                        (add-span-overt ,*v-subcmd-tree*)
-                        (setq ,*v-subcmd-jsonl* (make-hash-table :test #'equal))
-                        (setf (gethash "ID" ,*v-subcmd-jsonl*)
-                              ,*v-subcmd-id*
-
-                              (gethash "comments" ,*v-subcmd-jsonl*)
-                              (loop for li in ,*v-subcmd-comments*
-                                    append (ppcre:split ";" li)
-                              )
-
-                              (gethash "tokens" ,*v-subcmd-jsonl*)
-                              tree-token-list
-
-                              (gethash "comp" ,*v-subcmd-jsonl*)
-                              (extract-comp ,*v-subcmd-tree*)
-                        )
-                      )
-                    )
-                  )
-                )
-                
                 ;; translate trees to semantics
                 ;; type: ABC tree → translation tree
                 ( "translate"
@@ -146,10 +119,10 @@
                 ;; write out jsonl objects 
                 ;; type: hashtable → void
                 ;; command is to be given later
-                ( "write-jsonl"
-                  (setq expect-next ':path)
-                  (values 'w-jsonl :write-jsonl)
-                )
+                ;; ( "write-jsonl"
+                ;;   (setq expect-next ':path)
+                ;;   (values 'w-jsonl :write-jsonl)
+                ;; )
                 
                 ( otherwise 
                   (error (format t "FATAL: unknown subcmd: ~a" subcmd))
@@ -188,35 +161,40 @@
     )
   )
   
-  (defun gen-write-jsonl-cmd (w path)
-    (declare (ignore w))
-    (match path
-      ;; STDOUT
-      ( "-"
-        `(progn
-          (yason:encode ,*v-subcmd-jsonl* *standard-output*)
-          (format *standard-output* "~%")
-        )
-      )
-      ( otherwise
-        (error "Unimplemented")
-      )
-    )
-  )
+  ;; (defun gen-write-jsonl-cmd (w path)
+  ;;   (declare (ignore w))
+  ;;   (match path
+  ;;     ;; STDOUT
+  ;;     ( "-"
+  ;;       `(progn
+  ;;         (yason:encode ,*v-subcmd-jsonl* *standard-output*)
+  ;;         (format *standard-output* "~%")
+  ;;       )
+  ;;     )
+  ;;     ( otherwise
+  ;;       (error "Unimplemented")
+  ;;     )
+  ;;   )
+  ;; )
   
   (defun add-write-std (cmd)
     (list cmd (gen-write-cmd nil "-"))
   )
   
-  (defun add-write-jsonl-std (cmd)
-    (list cmd (gen-write-jsonl-cmd nil "-"))
-  )
+  ;; (defun add-write-jsonl-std (cmd)
+  ;;   (list cmd (gen-write-jsonl-cmd nil "-"))
+  ;; )
 )
 
 (yacc::define-parser *subcmds-tree*
   (:start-symbol abc)
-  (:terminals ( abc2abc abc2tr abc2jsonl tr2sem 
-                w w-jsonl path
+  (:terminals ( abc2abc
+                abc2tr 
+                ;; abc2jsonl
+                tr2sem 
+                w 
+                ;; w-jsonl 
+                path
               )
   )
   (abc
@@ -233,8 +211,8 @@
     (abc2tr tr #'cons)
     
     ;; abc → abc2jsonl (jsonl | ∅{write -} )
-    (abc2jsonl #'add-write-jsonl-std)
-    (abc2jsonl jsonl #'cons)
+    ;; (abc2jsonl #'add-write-jsonl-std)
+    ;; (abc2jsonl jsonl #'cons)
   )
   
   (tr
@@ -250,9 +228,9 @@
   )
   
   ;; jsonl → wrt-jsonl
-  (jsonl
-    (wrt-jsonl #'list)
-  )
+  ;; (jsonl
+  ;;   (wrt-jsonl #'list)
+  ;; )
 
   ;; wrt → w path $
   (wrt
@@ -260,9 +238,9 @@
   )
   
   ;; wrt-jsonl → w-jsonl path
-  (wrt-jsonl 
-    (w-jsonl path #'gen-write-jsonl-cmd) 
-  )
+  ;; (wrt-jsonl 
+  ;;   (w-jsonl path #'gen-write-jsonl-cmd) 
+  ;; )
 )
 
 (defun parse-subcmds-raw (args)
@@ -389,9 +367,7 @@ subcmd list:
 - adjust-rc (ABC → ABC)
 - translate (ABC → sem)
 - reduce (sem → sem)
-- project-comp (ABC → json)
 - write [ - | PATH ] (ABC | sem → nil)
-- write-jsonl [ - | PATH ] (json → nil)
 
 TLDR:
 - To make LF representations:
@@ -402,9 +378,6 @@ TLDR:
 
 - To gain semantic representations:
   restore-empty move-comp translate reduce write -
-
-- To extract comparative annotations on a string basis:
-  project-comp write-jsonl -
 "
         )
       )
