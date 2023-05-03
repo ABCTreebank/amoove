@@ -14,6 +14,7 @@
         :reader get-sentence-ID
     )
   )
+  (:documentation "Represents an abstarct error pertaining to tree manupilation.")
 )
 
 (define-condition parse-label-error (tree-manupilation-error)
@@ -35,18 +36,37 @@
   (:documentation "Error when the parser encounters a broken label")
 )
 
-(defun annotate-subcmds (args)
-  "From ARGS, give a generator that yields "
-  (let  ( (pointer args) 
-          (expect-next nil) 
+(declaim (ftype (function (list) 
+                          (function () (values symbol *))
+                )
+                lexicalize-subcmds
+         )
+)
+(defun lexicalize-subcmds (args)
+"Lexicalize ARGS, a list of strings representing a chain of subcommands,
+and construct a generator yields tagged tokens."
+
+  (let  ( ;; the current node
+          (pointer args) 
+
+          ;; the automaton state
+          (expect-next nil)
         )
+
+    ;; return a generator
     (lambda ()
-      (match expect-next
+      ;; look up the state
+      (match expect-next 
+        ;; if :PATH is required
         ( ':path
-          (match pointer 
+          ;; match the current node
+          (match pointer
             ( (cons path-str rest)
+              ;; transition
               (setq pointer rest)
               (setq expect-next nil)
+
+              ;; return values
               (values 'path path-str)
             )
             ( otherwise 
@@ -54,14 +74,19 @@
             )
           )
         )
+        ;; if the state is the default one expecting a subcommand
         ( otherwise 
+          ;; match the current node
           (match pointer
             ;; if ARGS is empty
-            ( nil (values nil nil) )
+            ( nil 
+              ;; return NILs
+              (values nil nil) 
+            )
 
             ;; if ARGS has words
             ( (cons subcmd rest)
-              ;; shift the pointer
+              ;; shift the node
               (setq pointer rest)
 
               ;; match the current word
@@ -73,7 +98,7 @@
                     `(setq ,*v-subcmd-tree* (restore-empty ,*v-subcmd-tree*))
                   )
                 )
-                
+
                 ;; move comparative ingredients
                 ;; type: ABC tree → ABC tree
                 ( "move-comp"
@@ -81,7 +106,7 @@
                     `(setq ,*v-subcmd-tree* (move-comp ,*v-subcmd-tree*))
                   )
                 )
-                
+
                 ;; reshape trees applied to `move-comp` in a human-friendly format
                 ;; type: ABC tree → ABC tree
                 ( "make-move-comp-pretty"
@@ -91,7 +116,7 @@
                     )
                   )
                 )
-                
+
                 ;; translate trees to semantics
                 ;; type: ABC tree → translation tree
                 ( "translate"
@@ -99,7 +124,7 @@
                     `(setq ,*v-subcmd-tree* (to-lambda ,*v-subcmd-tree*))
                   )
                 )
-                
+
                 ;; do β-reducution
                 ;; type: translation tree → semantic tree
                 ( "reduce"
@@ -107,23 +132,17 @@
                     `(setq ,*v-subcmd-tree* (reduce-lambda ,*v-subcmd-tree*))
                   )
                 )
-                
+
                 ;; write out trees 
                 ;; type: {ABC, translation, semantic} tree → void
-                ;; command is to be given later
                 ( "write"
+                  ;; set the state to :PATH, requiring a path
                   (setq expect-next ':path)
+
+                  ;; return values
                   (values 'w :write)
                 )
-                
-                ;; write out jsonl objects 
-                ;; type: hashtable → void
-                ;; command is to be given later
-                ;; ( "write-jsonl"
-                ;;   (setq expect-next ':path)
-                ;;   (values 'w-jsonl :write-jsonl)
-                ;; )
-                
+
                 ( otherwise 
                   (error (format t "FATAL: unknown subcmd: ~a" subcmd))
                 )
@@ -135,7 +154,7 @@
           )
         )
       )
-    )  
+    )
   )
 )
 
@@ -161,96 +180,64 @@
     )
   )
   
-  ;; (defun gen-write-jsonl-cmd (w path)
-  ;;   (declare (ignore w))
-  ;;   (match path
-  ;;     ;; STDOUT
-  ;;     ( "-"
-  ;;       `(progn
-  ;;         (yason:encode ,*v-subcmd-jsonl* *standard-output*)
-  ;;         (format *standard-output* "~%")
-  ;;       )
-  ;;     )
-  ;;     ( otherwise
-  ;;       (error "Unimplemented")
-  ;;     )
-  ;;   )
-  ;; )
-  
   (defun add-write-std (cmd)
     (list cmd (gen-write-cmd nil "-"))
   )
-  
-  ;; (defun add-write-jsonl-std (cmd)
-  ;;   (list cmd (gen-write-jsonl-cmd nil "-"))
-  ;; )
 )
 
 (yacc::define-parser *subcmds-tree*
+"The subcommand parser."
   (:start-symbol abc)
   (:terminals ( abc2abc
                 abc2tr 
-                ;; abc2jsonl
                 tr2sem 
-                w 
-                ;; w-jsonl 
+                w
                 path
               )
   )
+  ;; derivations
   (abc
-    ;; abc → wrt abc?
-    (wrt #'list)
-    (wrt abc #'cons)
-    
-    ;; abc → abc2abc (abc | ∅{write -} )
+    ;; → write-out
+    (write-out #'list)
+    ;; → write-out abc
+    (write-out abc #'cons)
+
+    ;; → abc2abc [write-out]
     (abc2abc #'add-write-std)
+    ;; → abc2abc abc
     (abc2abc abc #'cons)
-    
-    ;; abc → abc2tr (tr | ∅{write -} )
+
+    ;; → abc2tr [write-out]
     (abc2tr #'add-write-std)
+    ;; → abc2tr tr
     (abc2tr tr #'cons)
-    
-    ;; abc → abc2jsonl (jsonl | ∅{write -} )
-    ;; (abc2jsonl #'add-write-jsonl-std)
-    ;; (abc2jsonl jsonl #'cons)
   )
-  
+
   (tr
-    (wrt #'list)
-    (wrt tr #'cons)
+    ;; → write-out
+    (write-out #'list)
+    ;; → write-out tr
+    (write-out tr #'cons)
+    ;; → tr2sem [write-out]
     (tr2sem #'add-write-std)
+    ;; → tr2sem sem
     (tr2sem sem #'cons)
   )
-  
-  (sem
-    (wrt #'list)
-    (wrt sem #'cons)
-  )
-  
-  ;; jsonl → wrt-jsonl
-  ;; (jsonl
-  ;;   (wrt-jsonl #'list)
-  ;; )
 
-  ;; wrt → w path $
-  (wrt
+  (sem
+    ;; → write-out
+    (write-out #'list)
+    ;; → write-out sem
+    (write-out sem #'cons)
+  )
+
+  ;; write-out → w path $
+  (write-out
     (w path #'gen-write-cmd)
   )
-  
-  ;; wrt-jsonl → w-jsonl path
-  ;; (wrt-jsonl 
-  ;;   (w-jsonl path #'gen-write-jsonl-cmd) 
-  ;; )
 )
 
-(defun parse-subcmds-raw (args)
-  (yacc::parse-with-lexer
-    (annotate-subcmds args) 
-    *subcmds-tree*
-  )
-)
-
-(declaim (ftype (function *
+(declaim (ftype (function (list)
                           ; returns
                           (function ( string ; *v-subcmd-id*
                                       list ; *v-subcmd-comments*
@@ -266,9 +253,10 @@
 )
 (defun parse-subcmds (args)
   "Parse subcmds in ARGS and assembly a function doing what the subcmds require."
-  (declare (type list args))
-  (cond 
+  (cond
+    ;; if args is empty
     ( (zerop (length args))
+      ;; return a vacuous function
       (eval `(lambda  ( ,*v-subcmd-id*
                         ,*v-subcmd-comments*
                         ,*v-subcmd-tree* 
@@ -284,6 +272,8 @@
             )
       )
     )
+
+    ;; if args is not empty
     ( t 
       (let  ( (cmd `(lambda ( ,*v-subcmd-id*
                               ,*v-subcmd-comments*
@@ -296,7 +286,16 @@
                                            ,*v-subcmd-jsonl*
                                 )
                       )
-                      ,@(parse-subcmds-raw args)
+
+                      ;; splice in the constructed functions
+                      ,@(yacc::parse-with-lexer
+                            (lexicalize-subcmds args)
+
+                            ;; the parser
+                            *subcmds-tree*
+                      )
+
+                      ;; return nil
                       nil
                     )
               )
@@ -313,6 +312,8 @@
 )
 
 (defun main ()
+  "The main CLI routine."
+
   (opts:define-opts 
     ( :name :help
       :description "get the help text"
@@ -383,9 +384,12 @@ TLDR:
       )
       ;; otherwise
       ( t 
+        ;; print out the raw subcommand args
         (format *error-output* "Subcommands: ~a~%" free-args)
         
-        (let      ( (action (parse-subcmds free-args))
+        (let      ( ;; the action constructed from the parsed subcommand args
+                    (action (parse-subcmds free-args))
+                    ;; the pointer to one of the trees iterated.
                     (tree-raw nil)
                   )
           (loop
