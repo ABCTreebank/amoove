@@ -9,6 +9,7 @@
     :trivia.ppcre
     :yacc
     :function-cache
+    :mgl-pax
   )
   :serial t
   :components (
@@ -16,6 +17,7 @@
     (:file "cat")
     (:file "annot")
     (:file "psd")
+    (:file "docs")
   )
   :in-order-to (
     (test-op (test-op amoove/test))
@@ -80,6 +82,7 @@
     :yason
     :unix-opts
     :amoove
+    :mgl-pax
   )
   :serial t
   :components (
@@ -90,6 +93,7 @@
         (:file "to-lambda")
         (:file "reduce")
         (:file "cli")
+        (:file "docs")
       )
     )
   )

@@ -1,11 +1,6 @@
 (defpackage :amoove/psd
   (:use :cl)
   (:export
-    penntree-parse-error
-    unexpected-token
-    trailing-parenthesis
-    unclosed-parenthesis
-
     get-parser
     split-ID
     alter-nodes
@@ -17,6 +12,21 @@
 
 (in-package :amoove/psd)
 
+(mgl-pax:defsection @index (:title "Trees")
+  "A tree in [amoove][system] is just a lisp list in which the first element is the label of the tree, which is followed by subtrees as lisp lists again."
+  (@parse mgl-pax:section)
+  (@serialize mgl-pax:section)
+  (@func mgl-pax:section)
+  (@errors mgl-pax:section)
+)
+
+(mgl-pax:defsection @errors (:title "Errors")
+  (penntree-parse-error mgl-pax:condition)
+  "The following errors are subclasses of PENNTREE-PARSE-ERROR."
+  (unexpected-token mgl-pax:condition)
+  (unclosed-parenthesis mgl-pax:condition)
+)
+
 (define-condition penntree-parse-error (amoove:base-error)
   ( (file-name  :type string 
                 :initarg :file-name
@@ -24,6 +34,7 @@
                 :accessor get-file-name
     )
   )
+  (:documentation "An error raised when an error occurs during parsing a tree.")
 )
 
 (define-condition unexpected-token (penntree-parse-error)
@@ -42,6 +53,7 @@ File: ~a"
       )
     )
   )
+  (:documentation "An error raised when the parser meet an unexpected token.")
 )
 
 (define-condition trailing-parenthesis (unexpected-token)
@@ -56,6 +68,7 @@ File: ~a"
       )
     )
   )
+  (:documentation "An error raised when the parser finds a redundant closing parenthesis.")
 )
 
 (define-condition unclosed-parenthesis (penntree-parse-error)
@@ -67,6 +80,11 @@ File: ~a"
       )
     )
   )
+  (:documentation "An error raised when the parser finds EOF with an parenthesis being unclosed.")
+)
+
+(mgl-pax:defsection @parse (:title "Parsing")
+  (get-parser mgl-pax:function)
 )
 
 (defstruct (token (:conc-name get-) )
@@ -647,6 +665,71 @@ File: ~a"
   )
 )
 
+(mgl-pax:defsection @func (:title "Manipulation functions")
+  (split-comments mgl-pax:function)
+)
+
+(declaim  (ftype (function * (values (or list string symbol) list))
+          split-comments
+          )
+)
+(defun  split-comments
+        ( tree
+        &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
+        )
+        "Tease out '\\COMMENT' nodes from TREE.
+
+NODE-PRED specifies comment node labels.
+
+The function returns a pair of the tree without comments and the comments teased apart.
+        "
+  (declare (type (or list string symbol) tree)
+           (type (function (string) t) node-pred)
+  )
+
+  (trivia::match tree
+    ;; ( (COMMENTS {...}) ...tail )
+    ( (trivia::guard (cons (list comment-node comment) tail)
+                     (funcall node-pred comment-node)
+      )
+      ;; rip off braces tf there are
+      (trivia:match comment
+        ( (trivia.ppcre:ppcre "^{(.*)}$" contents)
+          (setf comment contents)
+        )
+      )
+
+      ;; tail → (tail-without-comment, comments)
+      (multiple-value-bind  (tail-without-comment tail-comments)
+                            (split-comments tail :node-pred node-pred)
+        (trivia:match tail-without-comment
+          ;; if tail-without-comment is a singleton list '( child )
+          ( (cons child nil)
+            ;; peel off the outer superfluous list
+            (setf tail-without-comment child)
+          )
+        )
+
+        ;; return the commentless tree 
+        ;; and the list of comments
+        (values tail-without-comment (cons comment tail-comments))
+      )
+    )
+    
+    ( (cons head tail)
+      (multiple-value-bind  (tail-without-comment tail-comments)
+                            (split-comments tail :node-pred node-pred)
+        (values (cons head tail-without-comment) tail-comments)
+      )
+    )
+    ( otherwise (values tree nil) )
+  )
+)
+
+(mgl-pax:defsection @serialize (:title "Serialization")
+  (pprint-tree mgl-pax:function)
+  (spellout mgl-pax:function)
+)
 (declaim (ftype (function * null) pprint-tree))
 (defun pprint-tree  ( tree
                       &key
@@ -657,10 +740,13 @@ File: ~a"
                       (is-second-or-latter-children nil)
                       (align-multibyte nil)
                     )
-  "Pretty print a tree.
+  "Pretty print TREE.
 
-CONVERTER speficies how to pretty print nodes.
-ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with that ID."
+* CONVERTER speficies how to pretty print nodes.
+* OUTPUT-STREAM speficies the output stream.
+* ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with that ID.
+* INDENT specifies the indent of this (sub)tree.
+"
   (declare  (type (or list string symbol) tree)
             (type (function (t) string) converter)
             (type stream output-stream)
@@ -784,62 +870,6 @@ ID specifies an ID of the given tree. If it is not NIL, the tree is wrapped with
         )
       )
     )
-  )
-)
-
-(declaim  (ftype (function * (values (or list string symbol) list))
-          split-comments
-          )
-)
-(defun  split-comments
-        ( tree
-        &key (node-pred (lambda (i) (string-equal i "COMMENT")) )
-        )
-        "Tease out 'COMMENT' nodes from TREE.
-
-NODE-PRED specifies comment node labels.
-The function returns a pair of the tree without comments and the comments teased apart.
-        "
-  (declare (type (or list string symbol) tree)
-           (type (function (string) t) node-pred)
-  )
-
-  (trivia::match tree
-    ;; ( (COMMENTS {...}) ...tail )
-    ( (trivia::guard (cons (list comment-node comment) tail)
-                     (funcall node-pred comment-node)
-      )
-      ;; rip off braces tf there are
-      (trivia:match comment
-        ( (trivia.ppcre:ppcre "^{(.*)}$" contents)
-          (setf comment contents)
-        )
-      )
-
-      ;; tail → (tail-without-comment, comments)
-      (multiple-value-bind  (tail-without-comment tail-comments)
-                            (split-comments tail :node-pred node-pred)
-        (trivia:match tail-without-comment
-          ;; if tail-without-comment is a singleton list '( child )
-          ( (cons child nil)
-            ;; peel off the outer superfluous list
-            (setf tail-without-comment child)
-          )
-        )
-
-        ;; return the commentless tree 
-        ;; and the list of comments
-        (values tail-without-comment (cons comment tail-comments))
-      )
-    )
-    
-    ( (cons head tail)
-      (multiple-value-bind  (tail-without-comment tail-comments)
-                            (split-comments tail :node-pred node-pred)
-        (values (cons head tail-without-comment) tail-comments)
-      )
-    )
-    ( otherwise (values tree nil) )
   )
 )
 

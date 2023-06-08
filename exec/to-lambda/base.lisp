@@ -42,6 +42,14 @@
   ;; (setq trivia.balland2006::*grounding-clause-limit* 2000)
 )
 
+(mgl-pax:defsection @io (:title "Input/Output tools" :export nil)
+  "Defined in `base.lisp`."
+  (*iter-abc-tree-raw* (mgl-pax:variable TREE-ITERATOR))
+  (*parse-abc-cat-annoted* (mgl-pax:variable CAT-ITERATOR))
+  (*alter-parse-abc-tree-nodes*  (mgl-pax:variable TREE-MODIFIER-DESTRUCTIVE))
+  (pprint-abc-node mgl-pax:function)
+)
+
 (defparameter *iter-abc-tree-raw*
   (amoove/psd::get-parser *standard-input*)
   "A generator that yields ABC trees from *STANDARD-INPUT*."
@@ -57,11 +65,19 @@
   (amoove/psd::alter-nodes 
     :f-nonterminal *parse-abc-cat-annoted*
   )
+  "Parse each non-terminal node of a given tree as an AMOOVE/CAT:CAT wrapped by AMOOVE/ANNOT:ANNOT.
+  
+Note that this function is destructive and modifying in-situ.
+  "
 )
 
 (defun pprint-abc-node (item)
+  "A helper function that pretty print an AMOOVE/CAT:CAT wrapped by AMOOVE/ANNOT:ANNOT."
   (✑::serialize-annot item :print-cat '🐈::serialize-cat-abc )
 )
+
+;; (mgl-pax:defsection @io (:title "Input/Output tools" :export nil)
+;; )
 
 (defstruct (func-holder (:conc-name get-))
   (func #'identity :type function)
@@ -126,6 +142,9 @@
   )  
 )
 
+(mgl-pax:defsection @error-base (:title "Base errors" :export nil) 
+  (base-error mgl-pax:condition)
+)
 (define-condition base-error (error) 
   ()
 )

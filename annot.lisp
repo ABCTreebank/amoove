@@ -13,10 +13,30 @@
 
 (in-package :amoove/annot)
 
+(mgl-pax:defsection @index (:title "Meta-annotations on categories")
+  (@objects mgl-pax:section)
+  (@parse mgl-pax:section)
+  (@serialize mgl-pax:section)
+)
+
+(mgl-pax:defsection @objects (:title "Objects")
+  (annot mgl-pax:class)
+  (make-annot mgl-pax:function)
+  (get-cat mgl-pax:structure-accessor)
+  (get-feats mgl-pax:structure-accessor)
+  (annot-p mgl-pax:function)
+)
+
 (defstruct (annot (:conc-name get-))
   "Represent a meta-tag of ABC non-terminal categories."
-  (cat nil :type (or null amoove/cat:cat))
+  (cat nil :type (or null string amoove/cat:cat))
   (feats (fset-user::empty-map))
+)
+(export 'cat :amoove/annot)
+(export 'feats :amoove/annot)
+
+(mgl-pax:defsection @parse (:title "Parsing")
+  (make-parser mgl-pax:macro)
 )
 
 (defmacro make-parser (&key (cat-parser nil))
@@ -100,6 +120,10 @@
         ) ;; end let
     ) ;; end lambda and qquote
   )
+)
+
+(mgl-pax:defsection @serialize (:title "Serialization")
+  (serialize-annot mgl-pax:function)
 )
 
 (defun serialize-annot

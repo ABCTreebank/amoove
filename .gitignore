@@ -23,3 +23,5 @@ bin/
 *.wx32fsl
 
 # End of https://www.toptal.com/developers/gitignore/api/commonlisp
+
+docs/

@@ -1,6 +1,15 @@
 (in-package :amoove/to-lambda)
 
+(mgl-pax:defsection @tolambda
+  (:title "Translation to semantics expressions" :export nil)
+  "In `to-lambda.lisp`."
+
+  (to-lambda mgl-pax:function)
+)
+
+
 (defun to-lambda (item)
+  "Translate a ABC Treebank tree to a semantic expression in the λ-calculus langauge in a top-down recursive way."
   (match item
     ;; ============
     ;; Lexical rules

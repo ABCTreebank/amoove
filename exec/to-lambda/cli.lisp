@@ -1,5 +1,12 @@
 (in-package :amoove/to-lambda)
 
+(mgl-pax:defsection @cli
+  (:title "CLI" :export nil)
+  "In `cli.lisp`."
+
+)
+
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *v-subcmd-id* (gensym "id_"))
   (defvar *v-subcmd-comments* (gensym "comments_"))
@@ -37,7 +44,7 @@
 )
 
 (declaim (ftype (function (list) 
-                          (function () (values symbol *))
+                          (function () (values symbol t))
                 )
                 lexicalize-subcmds
          )
@@ -185,8 +192,8 @@ and construct a generator yields tagged tokens."
   )
 )
 
+;; The subcommand parser
 (yacc::define-parser *subcmds-tree*
-"The subcommand parser."
   (:start-symbol abc)
   (:terminals ( abc2abc
                 abc2tr 

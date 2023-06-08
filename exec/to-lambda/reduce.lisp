@@ -1,5 +1,12 @@
 (in-package :amoove/to-lambda)
 
+(mgl-pax:defsection @reduce
+  (:title "β-reduction" :export nil)
+  "In `reduce.lisp`."
+
+  (reduce-lambda mgl-pax:function)
+)
+
 (defun reduce-lambda (item &key (var-table (fset-user::empty-map ) ))
   (match item
     ;; ( (:λ (var ,@var-rest) body) 

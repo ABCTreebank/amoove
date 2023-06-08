@@ -1,34 +1,47 @@
 (defpackage :amoove/cat
   (:use :cl)
-  (:export 
-    cat
-    name args feats 
-    get-name get-args get-feats
-    make-cat
-    uncurry-cat
-    ;; trivia patterns
-    cat-str cat-adjunct cat-uncurried
-    unify
-    serialize-cat-abc
-    parse-cat-abc
-    reduce-result make-reduce-result
-    reduce-cat
-    serialize-reduce-result parse-reduce-result
-  )
+  (:documentation "Sub-package for CCG categories")
 )
 
 (in-package :amoove/cat)
 
+(mgl-pax:defsection @index (:title "CCG categories")
+  (@objects mgl-pax:section)
+  (@patterns mgl-pax:section)
+  (@parse mgl-pax:section)
+  (@serialize mgl-pax:section)
+  (@func mgl-pax:section)
+)
+
+(mgl-pax:defsection @objects (:title "Objects")
+  (cat mgl-pax:class)
+  (make-cat mgl-pax:function)
+  (get-name (mgl-pax:structure-accessor cat))
+  (get-args (mgl-pax:structure-accessor cat))
+  (get-feats (mgl-pax:structure-accessor cat))
+  (make-load-form (mgl-pax:method () (cat)))
+)
+
 (defstruct (cat (:conc-name get-))
-  "Represent an ABC category."
+  "Represent an ABC category.
+An ABC category is a CCG category with features.
+  
+* NAME represents either the label of an atomic category or the direction of a functor category. Default to ⊥.
+* ARGS is a list of the arguments of this category. Typically they are the antecedent and the consequence of a functor category. Default to empty.
+* FEATS is a fset mapping (key-value pairs) of features. Default to empty.
+  "
   (name "⊥" :type string)
   (args '() :type list)
   (feats (fset-user::empty-map ))
 )
+(export 'name :amoove/cat)
+(export 'args :amoove/cat)
+(export 'feats :amoove/cat)
 
 (defmethod make-load-form
       ( (item cat) &optional environment )
       (declare (ignore environment))
+  "From ITEM, create a lisp expression which when evaluated will make the same instance."
   `(amoove/cat::make-cat
       :name ,(get-name item)
       :args (list ,@(get-args item) )
@@ -36,9 +49,18 @@
   )
 )
 
+(mgl-pax:defsection @patterns (:title "Pattern matchers")
+  "Pattern matchers to use along with [trivia][system]."
+  (cat-str mgl-pax:symbol-macro)
+  (cat-adjunct mgl-pax:symbol-macro)
+  (uncurry-cat mgl-pax:symbol-macro)
+  (cat-uncurried-ignore-functors mgl-pax:symbol-macro)
+  (cat-uncurried mgl-pax:symbol-macro)
+)
+
 (trivia::defpattern cat-str (str unified)
   "Match a CAT with an string representation of another ABC category STR.
-  UNIFIED stores the result of the unification of the two."
+UNIFIED stores the result of the unification of the two."
   (let  ( (item (gensym "item_"))
           (item-unified (gensym "item-unified_"))
           (cat-parsed (parse-cat-abc str))
@@ -211,9 +233,18 @@ If NAME-P is T, the first found functor is used."
   )
 )
 
+(mgl-pax:defsection @func (:title "Manipulation functions")
+  (@func-unify mgl-pax:section)
+  (@func-reduc mgl-pax:section)
+
+)
+(mgl-pax:defsection @func-unify (:title "Unification")
+  (unify mgl-pax:function)
+)
+
 (function-cache::defcached unify (cat1 cat2)
   "Unify two categories CAT1 and CAT2.
-   In case of failure, NIL is returned."
+   NIL is returned when fails."
   (trivia::match cat1
     ( (cat :name name1 :args args1 :feats feats1)
       (let ( (len-args (length args1)))
@@ -249,8 +280,20 @@ If NAME-P is T, the first found functor is used."
   )
 )
 
+
+(mgl-pax:defsection @func-reduc (:title "Reduction")
+  (reduce-cat mgl-pax:function)
+  "The following is the definitions of REDUCE-RESULT and related objects."
+  (reduce-result mgl-pax:class)
+  (make-reduce-result mgl-pax:function)
+  (get-reduction (mgl-pax:structure-accessor reduce-result))
+  (get-level (mgl-pax:structure-accessor reduce-result))
+  (serialize-reduce-result mgl-pax:function)
+  (parse-reduce-result mgl-pax:function)
+)
+
 (defstruct (reduce-result (:conc-name get-))
-  "Store a detail result of REDUCE-CAT."
+  "Stores a detail result of REDUCE-CAT."
   (reduction "" :type string :read-only t)
   (level 0 :type integer :read-only t)
 )
@@ -271,7 +314,6 @@ If NAME-P is T, the first found functor is used."
   (format s "<REDUCE-RESULT RULE: '~a' >" (serialize-reduce-result o))
 )
 
-
 (function-cache::defcached parse-reduce-result (str)
   (trivia::match str
     ( (trivia.ppcre::ppcre "^([<>\\|]+)([0-9]+)?" name level)
@@ -287,10 +329,14 @@ If NAME-P is T, the first found functor is used."
 )
 
 (function-cache::defcached reduce-cat (cat-left cat-right)
-  "Try an →-elimnation or a function composition on CAT-LEFT and CAT-RIGHT.
-   The first returning value is the resulting category. NIL in case of failure.
-   The second returning value is detailed information about the rule that is applied.
-  "
+  "Attempt an →-elimnation (/-elimination, \\-elimination, |-elimination) 
+or a functional application on CAT-LEFT and CAT-RIGHT.
+
+* The first returning value is the resulting category. 
+  NIL in case of failure.
+* The second returning value is of type REDUCE-RESULT and contains detailed information about the rule that is applied. 
+  NIL in case of failure.
+"
 
   (trivia::match (list cat-left cat-right)
     ;; ant1\conseq1 ant2\conseq2
@@ -440,8 +486,13 @@ If NAME-P is T, the first found functor is used."
   ) ;; end trivia::match
 )
 
+
+(mgl-pax:defsection @serialize (:title "Serialization")
+  (serialize-cat-abc mgl-pax:function)
+)
+
 (function-cache::defcached serialize-cat-abc (input)
-  "Print INPUT, a CAT."
+  "Pretty print INPUT."
   (let*         ( (buf  (make-array 300
                                     :element-type 'character
                                     :fill-pointer 0
@@ -511,6 +562,12 @@ If NAME-P is T, the first found functor is used."
 
 (defmethod print-object ((o cat) s)
   (format s "<AMOOVE CAT ~a >" (serialize-cat-abc o))
+)
+
+(mgl-pax:defsection @parse (:title "Parsing")
+  (tokenize-cat-abc mgl-pax:function)
+  (*parser-cat-abc* (mgl-pax:variable YACC-PARSER))
+  (parse-cat-abc mgl-pax:function)
 )
 
 (defun tokenize-cat-abc (input)

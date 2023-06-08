@@ -1,5 +1,25 @@
 (in-package :amoove/to-lambda)
 
+(mgl-pax:defsection @movecomp
+  (:title "Movement of comparative nodes" :export nil)
+  "In `move-comp.lisp`."
+  (comp-info mgl-pax:class)
+  (append-comp-symbols mgl-pax:function)
+  (comp mgl-pax:symbol-macro)
+
+  (make-comp-bind-cat mgl-pax:function)
+  (make-yori-lexspec mgl-pax:function)
+  (lexspec-yori mgl-pax:symbol-macro)
+
+  (convert-prej mgl-pax:function)
+  (stack-node mgl-pax:function)
+  (restore-empty mgl-pax:function)
+
+  (move-comp mgl-pax:function)
+  (lineralize-vars mgl-pax:function)
+  (make-move-comp-pretty mgl-pax:function)
+)
+
 (defstruct (comp-info (:conc-name get-) )
     (index 0 :type integer :read-only t)
     (list-degree '() :type list)
@@ -85,7 +105,19 @@
 
 (defun convert-prej (tree-prej cat-root-original o)
   "Type-shift prejacent constituents of comparatives.
-E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (S|NP|<S/S>|<S/S>|NP より))
+
+E.g.
+
+```
+(<S/S> (NP 太郎)
+       (NP\\<S/S>> より))
+```
+↓
+
+```
+(S|NP|<S/S>|<S/S> (NP 太郎) 
+                  (S|NP|<S/S>|<S/S>|NP より))
+```
 "
   (declare  (type cons tree-prej)
             (type 🐈:cat cat-root-original)
@@ -160,7 +192,8 @@ E.g. (<S/S> (NP 太郎) (NP\\<S/S>> より)) → (S|NP|<S/S>|<S/S> (NP 太郎) (
   )
 )
 
-(defun restore-empty (tree) 
+(defun restore-empty (tree)
+"Restore empty categories."
   (trivia::match tree
     ;; <PP\S> or <NP\S>#comp=INDEX,root,cont
     ( (cons (annot (✑:cat (🐈:cat
