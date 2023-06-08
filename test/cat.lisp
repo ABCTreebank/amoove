@@ -48,6 +48,16 @@
                     (list 'amoove/cat::ATOM "B")
                 )
         )
+        (list*  "NP-OBJ"
+                (list
+                    (list 'amoove/cat::ATOM "NP-OBJ")
+                )
+        )
+        (list* "<Ssub\\CPq-OB1>"
+               (list
+                  (list )
+               )
+        )
   )
 )
 
