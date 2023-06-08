@@ -52,7 +52,7 @@
               
               (amoove/psd::pprint-tree tree
                 :converter pprint-node
-                :output-stream *error-output*
+                :output-stream (make-broadcast-stream )
                 :id id
               )
             )
