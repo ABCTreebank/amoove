@@ -10,7 +10,7 @@
 (in-package :amoove/docs)
 
 (defsection @index
-  (:title "Amoove")
+  (:title "Amoove Manual")
   "Amoove is built in order to amove 
 [ccg2lambda](https://github.com/mynlp/ccg2lambda) 
 and move tree nodes around in a more elegant way.

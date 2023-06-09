@@ -53,14 +53,12 @@ An ABC category is a CCG category with features.
   "Pattern matchers to use along with [trivia][system]."
   (cat-str mgl-pax:symbol-macro)
   (cat-adjunct mgl-pax:symbol-macro)
-  (uncurry-cat mgl-pax:symbol-macro)
+  (uncurry-cat mgl-pax:function)
   (cat-uncurried-ignore-functors mgl-pax:symbol-macro)
   (cat-uncurried mgl-pax:symbol-macro)
 )
 
 (trivia:defpattern cat-str (str unified)
-  "Match a CAT with an string representation of another ABC category STR.
-UNIFIED stores the result of the unification of the two."
   (let  ( (item (gensym "item_"))
           (item-unified (gensym "item-unified_"))
           (cat-parsed (parse-cat-abc str))
@@ -73,11 +71,16 @@ UNIFIED stores the result of the unification of the two."
     )
   )
 )
+(setf (documentation 'cat-str 'mgl-pax:symbol-macro)
+  "Match a CAT with an string representation of another \ABC category.
+
+Usage: `(cat-str str unified)`
+
+* STR specifies the string representation to match.
+* UNIFIED stores the result of the unification of the two, from which one can retrieve it."
+)
 
 (trivia:defpattern cat-adjunct (dir radical)
-  "Match an adjunct category.
-  DIR matches its functor type.
-  RADICAL matches its categorial radical."
   (let      ( (item (gensym "item_"))
               (args (gensym "args_"))
             )
@@ -94,6 +97,11 @@ UNIFIED stores the result of the unification of the two."
     )
   )
 )
+(setf (documentation 'cat-adjunct 'mgl-pax:symbol-macro)
+  "Match an adjunct category.
+DIR matches its functor type.
+RADICAL matches its categorial radical."
+)
 
 (function-cache:defcached uncurry-cat (item &key (name-p t))
   "List the antecedents of a (possibly multiple) functor category ITEM.
@@ -102,8 +110,9 @@ The primary returning value is, if any, the outmost functor name.
 The secondary returning value is a list of functor antecedents.
 The tertiary value is the consequence.
 
-NAME-P specifies the functor (`/`, `\\`, or `|`) the function should exclusively match with.
-For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields '(E D) and <C\\<A/B>> (the search stops at the `\\` functor).
+NAME-P specifies the functor ('/', '\\', or '|') 
+the function should exclusively match with.
+For example, if NAME-P is set as '/', from `<<C\\<A/B>>/D>/E` the function yields `(E D)` and `<C\\<A/B>>` (the search stops at the '\\' functor).
 
 If NAME-P is NIL, any functor categories will make a match.
 If NAME-P is T, the first found functor is used."
@@ -162,13 +171,6 @@ If NAME-P is T, the first found functor is used."
 )
 
 (trivia:defpattern cat-uncurried-ignore-functors (args conseq)
-  "Match a CAT with all of its functors destructed regardless of their types.
-   ARGS, as a list, stores the functor categorie(s).
-   CONSEQ stores the consequent category.
-
-   Example: `<A\\B\\C\\D>/E` makes a match.
-    ARGS is `'(E, A, B, C)`, and CONSEQ is `D`.
-  "
   (let    ( (v-item (gensym "item_ "))
             (v-item-uncurried (gensym "item-uncurried_")) 
           )
@@ -181,17 +183,19 @@ If NAME-P is T, the first found functor is used."
     )
   )
 )
+(setf (documentation 'cat-uncurried-ignore-functors 'mgl-pax:symbol-macro)
+  "Match a CAT with all of its functors destructed regardless of their types.
+ARGS, as a list, stores the functor categorie(s).
+CONSEQ stores the consequent category.
+
+Example: `<A\\B\\C\\D>/E` makes a match.
+
+* ARGS is `(list E A B C)`, and 
+* CONSEQ is `D`."
+)
 
 
 (trivia:defpattern cat-uncurried (functor args conseq)
-  "Match a CAT with its functors destructed.
-   FUNCTOR stores the functor type.
-   ARGS, as a list, stores the functor categorie(s).
-   CONSEQ stores the consequent category.
-
-   Example: `A/B/C/D/E` makes a match.
-    FUNCTOR is `/`, ARGS is `'(E, D, C, B)`, and CONSEQ is `A`.
-  "
   (let    ( (v-item (gensym "item_ "))
             (v-item-uncurried (gensym "item-uncurried_")) 
           )
@@ -204,6 +208,20 @@ If NAME-P is T, the first found functor is used."
         )
     )
   )
+)
+(setf (documentation 'cat-uncurried 'mgl-pax:symbol-macro)
+  "Match a CAT with its functors destructed.
+FUNCTOR stores the functor type.
+ARGS, as a list, stores the functor categorie(s).
+CONSEQ stores the consequent category.
+
+Example:
+`A/B/C/D/E` makes a match.
+
+* FUNCTOR is '/', 
+* ARGS is `(list E D C B)`, and 
+* CONSEQ is `A`.
+"
 )
 
 (defun .unify-feats (feats1 feats2)
