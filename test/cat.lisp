@@ -6,6 +6,7 @@
       :serialize-cat-abc
       :make-reduce-result
       :cat-str
+      :cat-adjunct
   )
 )
 (in-package :amoove/test/cat)
@@ -53,9 +54,13 @@
                     (list 'amoove/cat::ATOM "NP-OBJ")
                 )
         )
-        (list* "<Ssub\\CPq-OB1>"
+        (list* "<Ssub\\CPq>"
                (list
-                  (list )
+                  (list 'amoove/cat::PAREN-LEFT #\<)
+                  (list 'amoove/cat::ATOM "Ssub")
+                  (list 'amoove/cat::SLASH-LEFT #\\)
+                  (list 'amoove/cat::ATOM "CPq")
+                  (list 'amoove/cat::PAREN-RIGHT #\>)
                )
         )
   )
@@ -252,6 +257,52 @@
       )
         
       ( otherwise (fail ))
+    )
+  )
+)
+
+(defparameter *cat-pattern-cat-adjunct-list*
+  (list 
+    (list* "S[m]/S[m]" t )
+    (list* "S[m]\\S[m]" t )
+    (list* "S/S[m]" nil )
+    (list* "XP\\A" nil )
+  )
+)
+
+(test pattern-cat-adjunct
+  (loop for test-data in *cat-pattern-cat-adjunct-list* do
+    (trivia:match test-data
+      ( (list* cat match-result)
+        (let  ( (cat-parsed (parse-cat-abc cat))
+              )
+          (cond 
+            ( match-result
+              ;; match is expected
+              (trivia:match cat-parsed
+                ( (cat-adjunct _ _)
+                  (pass )
+                )
+                ( otherwise
+                  (fail (format nil "Category ~A is not regarded as an adjunct" cat-parsed))
+                )
+              )
+            )
+            ( t 
+              ;; match is not expected
+              (trivia:match cat-parsed
+                ( (cat-adjunct _ _)
+                  (fail (format nil "Category ~A is unexpectedly regarded as an adjunct." cat-parsed))
+                )
+                ( otherwise
+                  (pass )
+                )
+              )
+            )
+          )
+        )
+      )
+      ( otherwise (fail "Incorrect test data format"))
     )
   )
 )

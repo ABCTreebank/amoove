@@ -90,9 +90,9 @@ Usage: `(cat-str str unified)`
       (trivia:guard1 ,args 
         (and  (listp ,args)
               (= (length ,args) 2)
-              (equalp (cadr ,args) (caddr ,args))
+              (equalp (car ,args) (cadr ,args)) 
         )
-        (cadr ,args) ,radical
+        (car ,args) ,radical
       )
     )
   )
