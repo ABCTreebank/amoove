@@ -30,7 +30,7 @@ exec ros -Q -- $0 "$@"
 
   (mgl-pax:update-asdf-system-html-docs 
     amoove/to-lambda::@index :amoove/to-lambda
-    :target-dir "docs/abc2lambda/"
+    :target-dir "docs/abc2lambda-internal/"
   )
 )
 ;;; vim: set ft=lisp lisp:
