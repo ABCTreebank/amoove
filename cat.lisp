@@ -188,7 +188,8 @@ If NAME-P is T, the first found functor is used."
 ARGS, as a list, stores the functor categorie(s).
 CONSEQ stores the consequent category.
 
-Example: `<A\\B\\C\\D>/E` makes a match.
+Example: `<A\\B\\C\\D>/E` makes a match with 
+`(cat-uncurried-ignore-functors args conseq)`, where
 
 * ARGS is `(list E A B C)`, and 
 * CONSEQ is `D`."
@@ -216,7 +217,8 @@ ARGS, as a list, stores the functor categorie(s).
 CONSEQ stores the consequent category.
 
 Example:
-`A/B/C/D/E` makes a match.
+`A/B/C/D/E` makes a match
+with `(cat-uncurried functor args conseq)`, where
 
 * FUNCTOR is '/', 
 * ARGS is `(list E D C B)`, and 
