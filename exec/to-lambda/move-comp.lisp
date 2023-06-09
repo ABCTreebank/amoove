@@ -36,7 +36,7 @@
   )
 )
 
-(trivia::defpattern comp (index kinds)
+(trivia:defpattern comp (index kinds)
   "The matcher that matches meta-feature bundles (of type FSET:MAP) with a #comp feature."
   (let  ( (v-item (gensym "item_") )
           (v-item-comp (gensym "item-comp_"))

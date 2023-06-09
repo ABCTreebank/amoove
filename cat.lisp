@@ -49,7 +49,7 @@ An ABC category is a CCG category with features.
   )
 )
 
-(mgl-pax:defsection @patterns (:title "Pattern matchers")
+(mgl-pax:defsection @patterns (:title "Pattern matchers and destructors")
   "Pattern matchers to use along with [trivia][system]."
   (cat-str mgl-pax:symbol-macro)
   (cat-adjunct mgl-pax:symbol-macro)
@@ -58,7 +58,7 @@ An ABC category is a CCG category with features.
   (cat-uncurried mgl-pax:symbol-macro)
 )
 
-(trivia::defpattern cat-str (str unified)
+(trivia:defpattern cat-str (str unified)
   "Match a CAT with an string representation of another ABC category STR.
 UNIFIED stores the result of the unification of the two."
   (let  ( (item (gensym "item_"))
@@ -74,7 +74,7 @@ UNIFIED stores the result of the unification of the two."
   )
 )
 
-(trivia::defpattern cat-adjunct (dir radical)
+(trivia:defpattern cat-adjunct (dir radical)
   "Match an adjunct category.
   DIR matches its functor type.
   RADICAL matches its categorial radical."
@@ -95,7 +95,7 @@ UNIFIED stores the result of the unification of the two."
   )
 )
 
-(function-cache::defcached uncurry-cat (item &key (name-p t))
+(function-cache:defcached uncurry-cat (item &key (name-p t))
   "List the antecedents of a (possibly multiple) functor category ITEM.
 
 The primary returning value is, if any, the outmost functor name.
@@ -161,7 +161,7 @@ If NAME-P is T, the first found functor is used."
   )
 )
 
-(trivia::defpattern cat-uncurried-ignore-functors (args conseq)
+(trivia:defpattern cat-uncurried-ignore-functors (args conseq)
   "Match a CAT with all of its functors destructed regardless of their types.
    ARGS, as a list, stores the functor categorie(s).
    CONSEQ stores the consequent category.
@@ -183,7 +183,7 @@ If NAME-P is T, the first found functor is used."
 )
 
 
-(trivia::defpattern cat-uncurried (functor args conseq)
+(trivia:defpattern cat-uncurried (functor args conseq)
   "Match a CAT with its functors destructed.
    FUNCTOR stores the functor type.
    ARGS, as a list, stores the functor categorie(s).
@@ -242,7 +242,7 @@ If NAME-P is T, the first found functor is used."
   (unify mgl-pax:function)
 )
 
-(function-cache::defcached unify (cat1 cat2)
+(function-cache:defcached unify (cat1 cat2)
   "Unify two categories CAT1 and CAT2.
    NIL is returned when fails."
   (trivia::match cat1
@@ -298,7 +298,7 @@ If NAME-P is T, the first found functor is used."
   (level 0 :type integer :read-only t)
 )
 
-(function-cache::defcached serialize-reduce-result (item)
+(function-cache:defcached serialize-reduce-result (item)
   (trivia::match item
     ( (reduce-result :reduction name :level level)
       (if (= 0 level)
@@ -314,7 +314,7 @@ If NAME-P is T, the first found functor is used."
   (format s "<REDUCE-RESULT RULE: '~a' >" (serialize-reduce-result o))
 )
 
-(function-cache::defcached parse-reduce-result (str)
+(function-cache:defcached parse-reduce-result (str)
   (trivia::match str
     ( (trivia.ppcre::ppcre "^([<>\\|]+)([0-9]+)?" name level)
       (make-reduce-result :reduction name
@@ -328,7 +328,7 @@ If NAME-P is T, the first found functor is used."
   )
 )
 
-(function-cache::defcached reduce-cat (cat-left cat-right)
+(function-cache:defcached reduce-cat (cat-left cat-right)
   "Attempt an →-elimnation (/-elimination, \\-elimination, |-elimination) 
 or a functional application on CAT-LEFT and CAT-RIGHT.
 
@@ -491,7 +491,7 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
   (serialize-cat-abc mgl-pax:function)
 )
 
-(function-cache::defcached serialize-cat-abc (input)
+(function-cache:defcached serialize-cat-abc (input)
   "Pretty print INPUT."
   (let*         ( (buf  (make-array 300
                                     :element-type 'character
@@ -744,7 +744,7 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
   )
 )
 
-(function-cache::defcached parse-cat-abc (input)
+(function-cache:defcached parse-cat-abc (input)
   "Parse INPUT to yield a CAT."
   (cond
     ;; if input is null or empty:
