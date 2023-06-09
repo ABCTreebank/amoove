@@ -1,0 +1,22 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '() :silent t)
+  )
+
+(defpackage :amoove/utils/build
+  (:use :cl))
+(in-package :amoove/utils/build)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (asdf:make :amoove)
+  (asdf:make :amoove/to-lambda)
+  (asdf:make :amoove/comp-conv)
+  (asdf:make :amoove/pretty-trees)
+)
+;;; vim: set ft=lisp lisp:
