@@ -89,12 +89,6 @@ Note that this function is destructive and modifying in-situ.
   (format s "<FUNC-HOLDER ARITY: ~d, DESC: ~a>" (get-argn o) (get-desc o))
 )
 
-(trivia::defpattern punc ()
-  `(trivia.ppcre::ppcre
-      "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
-  )
-)
-
 (defun add-span-overt (tree &key (index 0))
   (declare (type integer index))
   (match tree

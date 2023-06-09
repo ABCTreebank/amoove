@@ -14,7 +14,8 @@
     ;; ============
     ;; Lexical rules
     ;; ============
-    
+    ;; NOTE: Rules are first-match.
+
     ;; ------------
     ;; Subjunctive coordinators
     ;; ------------
@@ -112,7 +113,9 @@
  
     ;; punctuations
     ( (list (annot (✑::cat (cat-adjunct _ _) ) )
-            (punc )
+            (trivia.ppcre::ppcre
+                "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
+            )
       )
       (let ( (v-x (gensym "X_")))
         `(:λ (,v-x) ,v-x)
