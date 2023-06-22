@@ -737,6 +737,7 @@ The function returns a pair of the tree without comments and the comments teased
                       (output-stream *standard-output*)
                       (id nil)
                       (indent 0)
+                      (is-multi-lines t)
                       (is-second-or-latter-children nil)
                       (align-multibyte nil)
                     )
@@ -751,6 +752,7 @@ The function returns a pair of the tree without comments and the comments teased
             (type (function (t) string) converter)
             (type stream output-stream)
             (type (or null string) id)
+            (type boolean is-multi-lines)
             (type integer indent)
             (type boolean is-second-or-latter-children align-multibyte)
   )
@@ -763,6 +765,7 @@ The function returns a pair of the tree without comments and the comments teased
         :output-stream output-stream
         :id nil
         :indent indent
+        :is-multi-lines is-multi-lines
         :is-second-or-latter-children is-second-or-latter-children
         :align-multibyte align-multibyte
       )
@@ -779,6 +782,7 @@ The function returns a pair of the tree without comments and the comments teased
             :output-stream output-stream
             :id nil
             :indent indent
+            :is-multi-lines is-multi-lines
             :is-second-or-latter-children nil
             :align-multibyte align-multibyte
           )
@@ -809,6 +813,7 @@ The function returns a pair of the tree without comments and the comments teased
               :output-stream output-stream
               :id id
               :indent indent-new
+              :is-multi-lines is-multi-lines
               :is-second-or-latter-children nil
               :align-multibyte align-multibyte
             )
@@ -817,6 +822,7 @@ The function returns a pair of the tree without comments and the comments teased
               :output-stream output-stream
               :id id
               :indent indent-new
+              :is-multi-lines is-multi-lines
               :is-second-or-latter-children t
               :align-multibyte align-multibyte
             )
@@ -837,13 +843,16 @@ The function returns a pair of the tree without comments and the comments teased
         ( (trivia:guard (cons child1 children-rest)
                         is-second-or-latter-children
           )
-          ;; https://stackoverflow.com/a/24758778
-          (format output-stream "~%~v@{~c~:*~}" indent #\ )
+          (if is-multi-lines
+            ;; https://stackoverflow.com/a/24758778
+            (format output-stream "~%~v@{~c~:*~}" indent #\ )
+          )
           (pprint-tree child1
             :converter converter
             :output-stream output-stream
             :id id
             :indent indent
+            :is-multi-lines is-multi-lines
             :is-second-or-latter-children nil
             :align-multibyte align-multibyte
           )
@@ -852,6 +861,7 @@ The function returns a pair of the tree without comments and the comments teased
             :output-stream output-stream
             :id id
             :indent indent
+            :is-multi-lines is-multi-lines
             :is-second-or-latter-children t
             :align-multibyte align-multibyte
           )
