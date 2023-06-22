@@ -1,5 +1,5 @@
 (defpackage :amoove/to-lambda
-  (:use :cl)
+  (:use :cl :iterate)
   (:local-nicknames
     (:✑ :amoove/annot)
     (:🐈 :amoove/cat)

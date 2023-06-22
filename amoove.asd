@@ -81,8 +81,10 @@
     :trivia.fset
     :yason
     :unix-opts
-    :amoove
+    :uuid
+    :local-time
     :mgl-pax
+    :amoove
   )
   :serial t
   :components (
