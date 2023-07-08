@@ -132,10 +132,10 @@ and construct a generator yields tagged tokens."
                 ( "translate"
                   (values 'abc2tr
                     `(progn
-                      (setf (gethash "^translate" ,*v-subcmd-record*)
+                      (setf (gethash "*translate" ,*v-subcmd-record*)
                             (to-lambda (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*) )
                       )
-                      (setf ,*v-subcmd-pre-state* "^translate")
+                      (setf ,*v-subcmd-pre-state* "*translate")
                     )
                   )
                 )
@@ -145,10 +145,10 @@ and construct a generator yields tagged tokens."
                 ( "reduce"
                   (values 'tr2sem
                     `(progn
-                      (setf (gethash "^reduce" ,*v-subcmd-record*)
+                      (setf (gethash "*reduce" ,*v-subcmd-record*)
                             (reduce-lambda (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*))
                       )
-                      (setf ,*v-subcmd-pre-state* "^reduce")
+                      (setf ,*v-subcmd-pre-state* "*reduce")
                     )
                   )
                 )
@@ -292,15 +292,21 @@ and construct a generator yields tagged tokens."
 
 (defun main ()
   "The main CLI routine."
-
-  (opts:define-opts 
+  
+  (opts:define-opts
+    ( :name :output-format
+      :description "the output format"
+      :short #\o
+      :long "output"
+      :default "PENN"
+      :arg-parser #'identity
+    )
     ( :name :help
       :description "get the help text"
       :short #\h
       :long "help"
     )
   )
-
   (multiple-value-bind (options free-args)
     (handler-case (opts:get-opts )
       (opts:unknown-option (con)
@@ -319,8 +325,8 @@ and construct a generator yields tagged tokens."
     
       (opts:arg-parser-failed (con)
         (format *error-output* "FATAL: cannot parse ~s as argument of ~s~%"
-              (opts:raw-arg con)
-              (opts:option con)
+          (opts:raw-arg con)
+          (opts:option con)
         )
         (opts:exit 1)
       )
@@ -427,9 +433,9 @@ TLDR:
                 (error (format nil "Illegal input: ~a~%" tree-raw) )
                 (skip-tree ()
                   :report 
-                    (lambda (strm)
-                            (format strm "Skip this tree [ID: ~a]." id)
-                    )
+                  (lambda (strm)
+                          (format strm "Skip this tree [ID: ~a]." id)
+                  )
                 )
               )
             )
@@ -437,35 +443,88 @@ TLDR:
           
           (finally 
             ;; write 
-            (yason:with-output (*standard-output*)
-              (yason:with-object ()
-                (yason:encode-object-elements
-                  "generation-date" (format nil "~a" (local-time:now ))
-                  "abc2λ-version" "0.0.0.0"
+            (match (string-upcase (getf options :output-format))
+              ( "PENN"
+                (iter (for (id record) in-hashtable store)
+                  (iter (for (key value) in-hashtable record)
+                    (match key
+                      ( (trivia.ppcre:ppcre "^\\*(.+)$" tree-key-name)
+                        (amoove/psd:pprint-tree value
+                          :converter #'pprint-abc-node
+                          :output-stream *standard-output*
+                          :is-multi-lines nil
+                          :id (format nil "~A_~A" id tree-key-name)
+                        )
+                      )
+                      ( (trivia.ppcre:ppcre "^\\^(.+)$" tree-key-name)
+                        (amoove/psd:pprint-tree value
+                          :converter #'pprint-abc-node
+                          :output-stream *standard-output*
+                          :is-multi-lines nil
+                          :id (format nil "~A_~A" id tree-key-name)
+                        )
+                      )
+                      ( otherwise nil )
+                    )
+                  )
                 )
-                (yason:with-object-element ("contents")
-                  (yason:with-array ()
-                    (iter (for (id record) in-hashtable store)
-                      (yason:with-object ()
-                        (yason:encode-object-element "ID" id)
-                        (iter (for (key value) in-hashtable record)
-                          (if value 
-                            (match key
-                              ( (trivia.ppcre:ppcre "^\\^(.+)$" tree-key-name)
-                                (yason:encode-object-element tree-key-name 
-                                  (let ( (strm (make-string-output-stream )))
-                                    (amoove/psd:pprint-tree value
-                                      :converter #'pprint-abc-node
-                                      :output-stream strm
-                                      :align-multibyte t
-                                      :is-multi-lines nil
+              )
+              ( "VIEWER"
+                (yason:with-output (*standard-output*)
+                  (yason:with-object ()
+                    (yason:encode-object-elements
+                      "generation-date" (format nil "~a" (local-time:now ))
+                      "abc2λ-version" "0.0.0.0"
+                    )
+                    (yason:with-object-element ("contents")
+                      (yason:with-array ()
+                        (iter (for (id record) in-hashtable store)
+                          (yason:with-object ()
+                            (yason:encode-object-element "ID" id)
+                            (yason:with-object-element ("columns")
+                              (yason:with-object ()
+                                (iter (for (key value) in-hashtable record)
+                                  (if value 
+                                    (match key
+                                      ( (trivia.ppcre:ppcre "^\\*(.+)$" tree-key-name)
+                                        (yason:with-object-element (tree-key-name)
+                                          (yason:with-object ()
+                                            (yason:encode-object-element "type" "lambda-tree")
+                                            (yason:with-object-element ("data")
+                                              (export-LF-as-React-CheckBox-Tree value :output-stream yason::*json-output*)
+                                            )
+                                          )
+                                        )
+                                      )
+                                      ( (trivia.ppcre:ppcre "^\\^(.+)$" tree-key-name)
+                                        (yason:with-object-element (tree-key-name)
+                                          (yason:with-object () 
+                                            (yason:encode-object-element "type" "tree")
+                                            (yason:with-object-element ("data")
+                                              (amoove/psd:export-as-React-D3-Tree tree
+                                                        :converter #'pprint-abc-node
+                                                        :output-stream strm
+                                                      )
+                                            )
+                                          )
+                                        )
+                                      )
+                                      ( otherwise
+                                        (yason:with-object-element (tree-key-name)
+                                          (yason:with-object () 
+                                            (yason:encode-object-elements
+                                              "type" "string" 
+                                              key value
+                                            )
+                                          )
+                                        )
+                                      )
                                     )
-                                    (get-output-stream-string strm)
                                   )
                                 )
                               )
-                              ( otherwise (yason:encode-object-element key value))
                             )
+
                           )
                         )
                       )
@@ -474,8 +533,8 @@ TLDR:
                 )
               )
             )
-          )
-        ) ;; END loop
+          ) ;; END finally
+        ) ;; END iter
       )
     )
   )
