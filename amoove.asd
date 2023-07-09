@@ -8,6 +8,7 @@
     :trivia
     :trivia.ppcre
     :yacc
+    :yason
     :function-cache
     :mgl-pax
   )
@@ -84,6 +85,7 @@
     :uuid
     :local-time
     :mgl-pax
+    :xml-emitter
     :amoove
   )
   :serial t
