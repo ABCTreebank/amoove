@@ -142,3 +142,138 @@ Note that this function is destructive and modifying in-situ.
 (define-condition base-error (error) 
   ()
 )
+
+(defun export-LF-as-React-CheckBox-Tree
+  (expr &key (output-stream *output-stream*))
+  (yason:with-output (output-stream)
+    (.export-LF-as-React-CheckBox-Tree-intern expr)
+  )
+)
+(defparameter *LF-node-counter* 0)
+(defun .export-LF-as-React-CheckBox-Tree-intern (expr)
+  (match expr 
+    ( (cons ':λ (cons args conseq))
+      (yason:with-object ()
+        (yason:encode-object-elements
+          "id" (incf *LF-node-counter*)
+          "name" (format nil "λ (~{~a~^, ~})" args)
+          "showCheckbox" "false"
+        )
+        (yason:with-object-element ("children")
+          (yason:with-array ()
+            (.export-LF-as-React-CheckBox-Tree-intern conseq)
+          )
+        )
+      )
+    )
+
+    ( (guard (cons head tail)
+             (atom head)
+      )
+      (yason:with-object ()
+        (yason:encode-object-elements
+          "id" (incf *LF-node-counter*)
+          "name" (format nil "~A" head)
+          "showCheckbox" "false"
+        )
+        (yason:with-object-element ("children")
+          (yason:with-array () 
+            (iter (for item in tail)
+              (.export-LF-as-React-CheckBox-Tree-intern item)
+            )        
+          )
+        )
+      )
+    )
+
+    ( (cons _ _)
+      (yason:with-object ()
+        (yason:encode-object-elements
+          "id" (incf *LF-node-counter*)
+          "name" "<APPLICATION>"
+          "showCheckbox" "false"
+        )
+        (yason:with-object-element ("children")
+          (yason:with-array () 
+            (iter (for item in expr)
+              (.export-LF-as-React-CheckBox-Tree-intern item)
+            )        
+          )
+        )
+      )
+    )
+
+    ( nil )
+    
+    ( otherwise 
+      (yason:with-object ()
+        (yason:encode-object-elements
+          "id" (incf *LF-node-counter*)
+          "name" (format nil "~A" expr)
+          "showCheckbox" "false"
+        )
+      )
+    )
+  )
+)
+
+
+(defun export-as-LF (expr &key (output-stream *output-stream*)) 
+  (let ( (xml-emitter::*xml-output-stream* output-stream)) 
+    (xml-emitter:with-simple-tag 
+          ("math" nil "http://www.w3.org/1998/Math/MathML")
+      (.export-as-LF-intern expr)
+    )
+  )
+)
+
+(defun .gen-invisible-time ()
+  (xml-emitter:with-simple-tag ("mchar" '(("name" "InvisibleTimes")))
+  )
+)
+
+(defun .gen-mathop-invisible-time ()
+  (xml-emitter:with-simple-tag ("mo")
+    (.gen-invisible-time )
+  )
+)
+
+(defun .export-as-LF-intern (expr)
+  (match expr
+    ( (cons ':λ (cons args rest))
+      (xml-emitter:simple-tag "mo" "λ")
+      (xml-emitter:with-simple-tag ("mrow")
+        (iter (for item in args)
+          (if-first-time nil (xml-emitter:simple-tag "mi" ","))
+          (xml-emitter:simple-tag "mo" item)
+          (finally 
+            (xml-emitter:simple-tag "mi" ".")
+          )
+        )
+      )
+      (.export-as-LF-intern rest)
+    )
+    ( (cons x (cons (cons _ _) rest))
+      (.export-as-LF-intern x)
+      (.gen-mathop-invisible-time )
+      (xml-emitter:with-simple-tag ("mrow")
+        (xml-emitter:simple-tag "mi" "(")
+        (.export-as-LF-intern (cadr expr))
+        (xml-emitter:simple-tag "mi" ")")
+      )
+      (.gen-mathop-invisible-time )
+      (.export-as-LF-intern rest)
+    )
+    ( (cons x rest)
+      (.export-as-LF-intern x)
+      (.gen-mathop-invisible-time )
+      (.export-as-LF-intern rest)
+    )
+    ( nil
+      ;; do nothing
+    )
+    ( otherwise 
+      (xml-emitter:simple-tag "mi" expr)
+    )
+  )
+)
