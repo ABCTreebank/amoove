@@ -514,16 +514,16 @@ TLDR:
                                           (yason:with-object () 
                                             (yason:encode-object-element "type" "tree")
                                             (yason:with-object-element ("data")
-                                              (amoove/psd:export-as-React-D3-Tree tree
+                                              (amoove/psd:export-as-React-D3-Tree value
                                                         :converter #'pprint-abc-node
-                                                        :output-stream strm
+                                                        :output-stream yason::*json-output*
                                                       )
                                             )
                                           )
                                         )
                                       )
                                       ( otherwise
-                                        (yason:with-object-element (tree-key-name)
+                                        (yason:with-object-element (key)
                                           (yason:with-object () 
                                             (yason:encode-object-elements
                                               "type" "string" 
