@@ -11,6 +11,7 @@
   (make-yori-lexspec mgl-pax:function)
   (lexspec-yori mgl-pax:symbol-macro)
 
+  (normalize-comp-root mgl-pax:function)
   (convert-prej mgl-pax:function)
   (stack-node mgl-pax:function)
   (restore-empty mgl-pax:function)
@@ -189,6 +190,53 @@ E.g.
         )
         node
         tree-to-apply
+  )
+)
+
+(defun normalize-comp-root (tree)
+  (match tree
+    ( (guard (list (annot (✑:cat node-cat)
+                          (✑:feats node-fset))
+                   ;; only-child
+                   (cons (annot (✑:cat child-cat)
+                                (✑:feats child-feats)
+                         )
+                         child-children
+                   )
+             )
+             (and (match node-cat
+                    ( (amoove/cat:cat-str "PP\\S" _) nil )
+                    ( (amoove/cat:cat-str "NP\\S" _) nil )
+                    ( otherwise t )
+                  )
+                  (match node-fset
+                    ( (fset:map ("comp" (trivia.ppcre:ppcre "root"))) t )
+                  )
+             )
+      )
+      (list
+        (✑:make-annot 
+          :cat node-cat 
+          :feats (fset-user::with node-fset "comp" nil) ;; delete the comp 
+        )
+        (normalize-comp-root
+          (cons (✑:make-annot 
+                  :cat child-cat 
+                  :feats (fset-user::with child-feats 
+                            "comp" (fset-user::lookup node-fset "comp")
+                          ) 
+                )
+                child-children
+          )
+        )
+      )
+    )
+
+    ( (cons label children)
+      (cons label (mapcar #'normalize-comp-root children))
+    )
+
+    ( otherwise tree )
   )
 )
 

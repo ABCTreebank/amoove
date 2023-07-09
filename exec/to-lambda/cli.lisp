@@ -88,6 +88,19 @@ and construct a generator yields tagged tokens."
 
               ;; match the current word
               (match subcmd
+                ;; lower #comp=1,root as much as possible
+                ;; type: ABC tree → ABC tree
+                ( "normalize-comp-root"
+                  (values 'abc2abc
+                    `(progn
+                      (setf (gethash "^normalize-comp-root" ,*v-subcmd-record*)
+                            (normalize-comp-root (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*))
+                      )
+                      (setf ,*v-subcmd-pre-state* "^normalize-comp-root")
+                    )
+                  )
+                )
+              
                 ;; restore empty categories
                 ;; type: ABC tree → ABC tree
                 ( "restore-empty"
