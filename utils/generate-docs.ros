@@ -26,11 +26,31 @@ exec ros -Q -- $0 "$@"
   (mgl-pax:update-asdf-system-html-docs 
     amoove/docs::@index :amoove
     :target-dir "docs/amoove/"
+    :pages
+    `(
+      ( :objects (,amoove/docs::@index)
+        :source-uri-fn  ,(mgl-pax:make-git-source-uri-fn
+                            :amoove
+                            "https://github.com/ABCTreebank/amoove"
+                            :git-version "main"
+                        )
+      )
+    )
   )
 
   (mgl-pax:update-asdf-system-html-docs 
     amoove/to-lambda::@index :amoove/to-lambda
     :target-dir "docs/abc2lambda-internal/"
+    :pages
+    `(
+      ( :objects (,amoove/to-lambda::@index)
+        :source-uri-fn  ,(mgl-pax:make-git-source-uri-fn
+                            :amoove/to-lambda
+                            "https://github.com/ABCTreebank/amoove"
+                            :git-version "main"
+                        )
+      )
+    )
   )
 )
 ;;; vim: set ft=lisp lisp:
