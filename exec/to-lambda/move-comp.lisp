@@ -2,7 +2,8 @@
 
 (mgl-pax:defsection @movecomp
   (:title "Movement of comparative nodes" :export nil)
-  "In `move-comp.lisp`."
+  "Coded in `move-comp.lisp`.  
+"
   (comp-info mgl-pax:class)
   (append-comp-symbols mgl-pax:function)
   (comp mgl-pax:symbol-macro)
@@ -22,11 +23,13 @@
 )
 
 (defstruct (comp-info (:conc-name get-) )
-    (index 0 :type integer :read-only t)
-    (list-degree '() :type list)
-    (list-prejacent '() :type list)
-    (list-contrast '() :type list)
-    (list-difference '() :type list)
+  "A sturcture for stroing comparative components collected from a tree.
+  Used by MOVE-COMP."
+  (index 0 :type integer :read-only t)
+  (list-degree '() :type list)
+  (list-prejacent '() :type list)
+  (list-contrast '() :type list)
+  (list-difference '() :type list)
 )
     
 (defun append-comp-symbols (o)
@@ -83,6 +86,11 @@
 )
 
 (defun make-yori-lexspec (o)
+"Given O, 
+generate a string which describes lexical specifications of より／比べて.
+
+The format: `yori,{count of 'cont' constituents},{count of 'diff'}`
+"
   (declare (type comp-info o) )
   (format nil "yori,~d,~d"
       (length (get-list-contrast o))
@@ -105,9 +113,18 @@
 )
 
 (defun convert-prej (tree-prej cat-root-original o)
-  "Type-shift prejacent constituents of comparatives.
+  "Type-shift a/the 'prej' (a/the prejacent/pivot constituent) of the より／と比べて comparative construction
+so that the constituent is typed with
+  a functor type which faithfully approximates the functionality of the comparative marker より／と比べて, which takes 'diff' (difference) and 'cont' (contrast) constituents.
 
-E.g.
+* TREE-PREJ is a constituent which contains the pivot and the comparative marker より／と比べて.
+This function will type-raise this constituent.
+
+* CAT-ROOT-ORIGINAL specifies the category of the scope of the comparative construction. In most cases, it will be `S`.
+
+* O (of type `COMP-INFO`) is the set of the comparative components collected beforehand.
+
+Example:
 
 ```
 (<S/S> (NP 太郎)
@@ -241,7 +258,12 @@ E.g.
 )
 
 (defun restore-empty (tree)
-"Restore empty categories."
+"Restore empty categories.
+
+Cases:
+* <PP\\S> or <NP\\S>, #comp=INDEX,root,cont
+* <PP\S> or <NP\S>, #comp=INDEX,root
+"
   (trivia::match tree
     ;; <PP\S> or <NP\S>#comp=INDEX,root,cont
     ( (cons (annot (✑:cat (🐈:cat
@@ -261,8 +283,9 @@ E.g.
             children 
       )
       (let ( (symb-trace (gensym "TRACE_")) )
-        (list ;; (PP\S#deriv=bind (symb-trace ) ...)
-              (✑:make-annot 
+        ;; (PP\S#deriv=bind (symb-trace ) 
+        ;;                  ...)
+        (list (✑:make-annot 
                 :cat (🐈:make-cat 
                         :name "\\" 
                         :args (list trace-cat clause-cat)
@@ -330,8 +353,14 @@ E.g.
                                 ("comp" (format nil "~d,root" index))
                               )
                     )
-                    ;; (NP#comp=INDEX symb-trace)
-                    (list (✑:make-annot :cat trace-cat ) symb-trace )
+                    ;; (PP#comp=INDEX symb-trace)
+                    (list (✑:make-annot :cat trace-cat 
+                                        :feats (fset:map 
+                                          ("comp" (format nil "~d,cont" index))
+                                        ) 
+                          ) 
+                          symb-trace 
+                    )
                     ;; (PP\S ,@children)
                     (cons (✑:make-annot 
                             :cat (🐈:make-cat
@@ -355,7 +384,21 @@ E.g.
 )
 
 (defun move-comp (tree &key (current-comp-info nil))
-  "Move out ingredients of a comparative construction."
+"Moving necessary constituents of comparative construction(s) in TREE.
+This function operates in a recursive, bottom-up manner.
+This function is non-destrictive, always returning a new instance of tree (a new CONS list).
+
+1. The function will first apply itself recursively to the children of TREE.
+These recursive calls will expose what they have about the comparative constructions.
+The information will be stored in a brand-new COMP-INFO instance passed to each recursive call (from left to right) by reference.
+
+1. The next step depends on the nature of TREE.
+
+    * If TREE is not a 'root' (the topmost node of the semantic scope of the relevant comparative construction), then the collected information will be merely propagated upward.
+
+    * If TREE is a 'root', all the relevant constituents ('prej', 'cont', 'diff', 'deg') are extracted out, the remnant sites being filled by traces.
+      TREE will go through λ-abstraction before the extracted phrases are applied upon it in an order such that the 'prej' constituent comes first, followed by 'diff' and 'cont' constituents.
+"
   (trivia::match tree
     ;; _#comp=INDEX,root
     ( (cons (annot  (✑:cat cat-reduced) ;; (✑:cat (cat-str "S" cat-reduced)) 
@@ -391,18 +434,18 @@ E.g.
               (mapcar #'cdr (get-list-contrast new-comp-info))
             )
             :initial-value
-                (list (✑:make-annot 
-                        :cat  (make-comp-bind-cat
-                                cat-reduced
-                                new-comp-info
-                              )
-                        :feats (fset::map ("deriv" "bind") ) 
-                      )
-                      (append-comp-symbols new-comp-info)
-                      (cons (✑:make-annot :cat cat-reduced)
-                            children-transformed
-                      )
-                )
+              (list (✑:make-annot 
+                      :cat  (make-comp-bind-cat
+                              cat-reduced
+                              new-comp-info
+                            )
+                      :feats (fset::map ("deriv" "bind") ) 
+                    )
+                    (append-comp-symbols new-comp-info)
+                    (cons (✑:make-annot :cat cat-reduced)
+                          children-transformed
+                    )
+              )
         )
       )
     )
