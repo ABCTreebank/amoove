@@ -51,6 +51,7 @@ An ABC category is a CCG category with features.
 
 (mgl-pax:defsection @patterns (:title "Pattern matchers and destructors")
   "Pattern matchers to use along with [trivia][system]."
+  (cat-unify mgl-pax:symbol-macro)
   (cat-str mgl-pax:symbol-macro)
   (cat-adjunct mgl-pax:symbol-macro)
   (uncurry-cat mgl-pax:function)
@@ -58,17 +59,27 @@ An ABC category is a CCG category with features.
   (cat-uncurried mgl-pax:symbol-macro)
 )
 
-(trivia:defpattern cat-str (str unified)
+(trivia:defpattern cat-unify (other maybe-unified)
   (let  ( (item (gensym "item_"))
-          (item-unified (gensym "item-unified_"))
-          (cat-parsed (parse-cat-abc str))
         )
     `(trivia::guard1 ,item (cat-p ,item)
-        (unify ,item ,cat-parsed)
-        (trivia::guard1 ,item-unified (not (null ,item-unified))
-            ,item-unified ,unified
-        )
+      (unify ,item ,other) ,maybe-unified
     )
+  )
+)
+(setf (documentation 'cat-unify 'mgl-pax:symbol-macro)
+  "MATCH a CAT with another CAT instance.
+  
+Usage: `(cat-unify other-cat unified)`
+
+* UNIFIED stores the result of the unification of the two, from which one can retrieve it. NIL if it fails."
+)
+
+(trivia:defpattern cat-str (str maybe-unified)
+  (let  ( (item (gensym "item_"))
+          (cat-parsed (parse-cat-abc str))
+        )
+    `(cat-unify ,cat-parsed ,maybe-unified)
   )
 )
 (setf (documentation 'cat-str 'mgl-pax:symbol-macro)
@@ -77,7 +88,7 @@ An ABC category is a CCG category with features.
 Usage: `(cat-str str unified)`
 
 * STR specifies the string representation to match.
-* UNIFIED stores the result of the unification of the two, from which one can retrieve it."
+* UNIFIED stores the result of the unification of the two, from which one can retrieve it. NIL if it fails."
 )
 
 (trivia:defpattern cat-adjunct (dir radical)
