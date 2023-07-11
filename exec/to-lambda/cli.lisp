@@ -416,7 +416,6 @@ TLDR:
                             (funcall *alter-parse-abc-tree-nodes* tree)
                             (setf (gethash "^parsed" record) tree)
                             ;; do the specified actions
-                            (funcall action record id "^parsed")
                           )
                           (error (c)
                             (error  (make-condition 'parse-label-error 
@@ -436,6 +435,7 @@ TLDR:
                           )
                       )
                     ) ;; END restart-case
+                    (funcall action record id "^parsed")
                   )
                 )
               )
