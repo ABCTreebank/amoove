@@ -10,7 +10,7 @@
 
 (defun to-lambda (item)
   "Translate a ABC Treebank tree to a semantic expression in the λ-calculus langauge in a top-down recursive way."
-  (match item
+  (match item 
     ;; ============
     ;; Lexical rules
     ;; ============
@@ -20,9 +20,7 @@
     ;; Subjunctive coordinators
     ;; ------------
     ;; ので
-    ( (list (annot (✑::cat (cat-str "S\\<S/S>" _)))
-            "ので"
-      )
+    ( (list (annot (✑:cat (🐈:cat-str "S\\<S/S>" (not nil)))) "ので")
       (let  ( (v-s1 (gensym "S1_"))
               (v-s2 (gensym "S2_"))
             )
@@ -30,9 +28,7 @@
       )
     )
 
-    ( (list (annot (✑::cat (cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" _)))
-            "ので"
-      )
+    ( (list (annot (✑:cat (🐈:cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" (not nil)))) "ので")
       (let  ( (v-sbj (gensym "SBJ_"))
               (v-s1 (gensym "S1_"))
               (v-s2 (gensym "S2_"))
@@ -42,7 +38,7 @@
     )
 
     ;; ;; vacuous て
-    ;; ( (list (annot (✑::cat (cat-adjunct _ _)) )
+    ;; ( (list (annot (✑:cat (cat-adjunct _ _)) )
     ;;         "て"
     ;;   )
     ;;   (let ( (v-x (gensym "X_")))
@@ -50,17 +46,13 @@
     ;;   )
     ;; )
 
-    ( (list (annot (✑::cat (cat-adjunct _ (cat-str "S" _))) )
-            "た"
-      )
+    ( (list (annot (✑:cat (🐈:cat-adjunct _ (cat-str "S" (not nil)))) ) "た")
       (let ( (v-x (gensym "X_")))
         `(:λ (,v-x) (:PAST ,v-x) )
       )
     )
 
-    ( (list (annot (✑::cat (cat-adjunct "\\" (cat-str "PP\\S" _))))
-            "あげ"
-      )
+    ( (list (annot (✑:cat (🐈:cat-adjunct "\\" (cat-str "PP\\S" (not nil))))) "あげ")
       (let ( (v-verb (gensym "VERB_"))
              (v-sbj (gensym "SBJ_"))
             )
@@ -69,14 +61,14 @@
     )
 
     ;; より
-    ( (cons (annot  (✑::feats
-                      (fset::map ("lexspec" (lexspec-yori n-cont n-diff) ) )
-                    )
-            )
+    ( (cons (annot (✑:feats (fset:map ("lexspec" (trivia.ppcre:ppcre "yori,([0-9]+),([0-9])" count-cont count-diff) ) ) ) )
             _
       )
+      item
       (let* ( (v-prej (gensym "PREJ_"))
               (v-clause (gensym "CLAUSE_"))
+              (n-cont (parse-integer count-cont))
+              (n-diff (parse-integer count-diff))
               (symb-cont  (loop for i from 0 below n-cont
                             collect (gensym (format nil "CONT_~d_" i))
                           )
@@ -110,17 +102,6 @@
         )
       )
     )
- 
-    ;; punctuations
-    ( (list (annot (✑::cat (cat-adjunct _ _) ) )
-            (trivia.ppcre::ppcre
-                "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
-            )
-      )
-      (let ( (v-x (gensym "X_")))
-        `(:λ (,v-x) ,v-x)
-      )
-    )
     
     ;; the fallback lexical rule
     ;; the eta-expanding version:
@@ -145,6 +126,40 @@
     ;;     ( otherwise w )
     ;;   )
     ;; )
+
+    ;; -----------
+    ;; Conjunction heads
+    ;; -----------
+    ( (list (annot (✑:cat (🐈:cat-adjunct _ _))  ;; TODO: add type checking
+                   (✑:feats (fset:map ("lexspec" "conj-bin-head") ) ) 
+            ) _)
+      (let  ( (v-x1 (gensym "X1_"))
+              (v-x2 (gensym "X2_"))
+            )
+        `(:λ (,v-x1 ,v-x2) (:AND ,v-x1 ,v-x2))
+      )
+    )
+
+    ( (list (annot (✑:cat (🐈:cat-adjunct _ _)) 
+                   (✑:feats (fset:map ("lexspec" "conj-bin-orphan-head") ) ) ) _)
+      (let  ( (v-x (gensym "X1_"))
+            )
+        `(:λ (,v-x) ,v-x)
+      )
+    )
+    
+    ;; ------------
+    ;; Punctuations (default)
+    ;; ------------
+    ( (list (annot (✑:cat (🐈:cat-adjunct _ _) ) )
+            (trivia.ppcre:ppcre
+                "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
+            )
+      )
+      (let ( (v-x (gensym "X_")))
+        `(:λ (,v-x) ,v-x)
+      )
+    )
     
     ( (guard (list _ w) (stringp w) ) w )
     ( (guard (list _ w) (symbolp w) ) w )
@@ -154,7 +169,7 @@
     ;; ============
     
     ;; slash introduction aka "bind"
-    ( (list (annot (✑::feats (fset::map ("deriv" "bind"))))
+    ( (list (annot (✑:feats (fset::map ("deriv" "bind"))))
             vars
             base
       )
@@ -163,9 +178,9 @@
 
     ;; slash elmination
     ( (guard 
-        (list (annot (✑::feats feats) )
-              (cons (annot (✑::cat cat1) ) _ )
-              (cons (annot (✑::cat cat2) ) _ )
+        (list (annot (✑:feats feats) )
+              (cons (annot (✑:cat cat1) ) _ )
+              (cons (annot (✑:cat cat2) ) _ )
         )
         (null (fset-user::lookup feats "deriv"))
       )
@@ -179,9 +194,12 @@
             ;; if the reduction is successful
             ( (reduce-result (🐈::reduction (or "|<" "<") ) (🐈::level l) )
               (cond 
+                ;; functional application 
                 ( (zerop l) 
                   (list child2-lambdaed child1-lambdaed)
                 )
+
+                ;; funcitonal composition
                 ( t
                   (let  ( (vs-arg (loop for i from 0 below l 
                                       collect (gensym (format nil "X_~d_" i))
@@ -197,10 +215,13 @@
             )
 
             ( (reduce-result (🐈::reduction (or "|>" ">")) (🐈::level l) )
-              (cond 
+              (cond
+                ;; functional application 
                 ( (zerop l) 
                   (list child1-lambdaed child2-lambdaed)
                 )
+
+                ;; funcitonal composition
                 ( t
                   (let  ( (vs-arg (loop for i from 0 below l 
                                     collect (gensym (format nil "X_~d_" i))
@@ -229,8 +250,8 @@
     ;; ============
     ;; (<PP[s]\S>'' (PP[s]\S _))
     ;; → λvp. λsbj. (:COORD ((PP[s]\S _) sbj) (vp sbj))
-    ;; ( (list (annot (✑::cat (cat-adjunct "/" (cat-str "PP[s]\\S" _))))
-    ;;         (cons (annot (✑::cat (cat-str "PP[s]\\S" _)))
+    ;; ( (list (annot (✑:cat (cat-adjunct "/" (cat-str "PP[s]\\S" _))))
+    ;;         (cons (annot (✑:cat (cat-str "PP[s]\\S" _)))
     ;;               _
     ;;         )
     ;;   )
@@ -247,8 +268,8 @@
 
     ;; (NP (N _))
     ;; → (:THE (N _))
-    ( (list (annot (✑::cat (cat-str "NP" _)) )
-            (cons (annot (✑::cat (cat-str "N" _)))
+    ( (list (annot (✑:cat (🐈:cat-str "NP" (not nil))) )
+            (cons (annot (✑:cat (🐈:cat-str "N" (not nil))))
                   _
             )
       )
@@ -258,8 +279,8 @@
     ;; (Ns\N (NUM _))
     ;; → λ(v-q2, v-f).
     ;;      v-q2 $ λv-x. (NUM _) $ λv-y. (:AND (:QUANT v-x v-y) (v-f v-x) )
-    ( (list (annot (✑::cat (cat-str "Ns\\N" _)))
-            (cons (annot (✑::cat (cat-str "NUM" _))) 
+    ( (list (annot (✑:cat (🐈:cat-str "Ns\\N" (not nil))))
+            (cons (annot (✑:cat (🐈:cat-str "NUM" (not nil)))) 
                   _
             )
       )
@@ -280,13 +301,13 @@
       )
     )
 
-    ( (list (annot (✑::cat (or (cat-str "N/N" _)
-                                (cat-str "NP/NP" _)
+    ( (list (annot (✑:cat (or (🐈:cat-str "N/N" (not nil))
+                              (🐈:cat-str "NP/NP" (not nil))
                             )
                    )
             )
-            (cons (annot (✑::cat (or (cat-str "PP\\S" _)
-                                      (cat-str "S|PP" _)
+            (cons (annot (✑:cat (or (🐈:cat-str "PP\\S" (not nil))
+                                    (🐈:cat-str "S|PP" (not nil))
                                   )
                         )
                   )
