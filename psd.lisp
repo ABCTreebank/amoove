@@ -1,5 +1,5 @@
 (defpackage :amoove/psd
-  (:use :cl)
+  (:use :cl :iterate)
   (:export
     get-parser
     split-ID
@@ -728,6 +728,7 @@ The function returns a pair of the tree without comments and the comments teased
 
 (mgl-pax:defsection @serialize (:title "Serialization")
   (pprint-tree mgl-pax:function)
+  (export-as-React-D3-Tree mgl-pax:function)
   (spellout mgl-pax:function)
 )
 (declaim (ftype (function * null) pprint-tree))
@@ -879,6 +880,66 @@ The function returns a pair of the tree without comments and the comments teased
           (format output-stream "~a" (funcall converter tree) )
         )
       )
+    )
+  )
+)
+
+(defun export-as-React-D3-Tree  (tree &key 
+                                  (id nil)
+                                  (converter (lambda (i) i))
+                                  (output-stream *output-stream*)
+                                )
+  (yason:with-output (output-stream)
+    (cond 
+      ( (stringp id)
+        (yason:with-object ()
+          (yason:with-object-element ("content")
+            (.export-as-React-D3-Tree-intern tree :converter converter)
+          )
+          (yason:encode-object-element "ID" id)
+        )
+      )
+      ( t 
+        (.export-as-React-D3-Tree-intern tree :converter converter)
+      )
+    )
+  )
+)
+
+(defun .export-as-React-D3-Tree-intern (tree &key (converter (lambda (i) i))
+                                )
+  (trivia:match tree
+    ;; a subtree with no node
+    ( (cons (type cons) _)
+      ;; assume an empty node
+      (.export-as-React-D3-Tree-intern (cons "" tree) :converter converter)
+    )
+    
+    ;; a subtree with a node and one or more children
+    ( (cons node children)
+      (yason:with-object ()
+        (yason:encode-object-elements "name" (funcall converter node))
+        (yason:with-object-element ("children")
+          (yason:with-array ()
+            (iter (for child in children)
+              (.export-as-React-D3-Tree-intern child :converter converter)
+            )
+          )
+        )
+      )
+    )
+    
+    ;; a subtree with no children
+    ( (cons node nil)
+      (yason:with-object () 
+        (yason:encode-object-elements "name" (funcall converter node))
+        (yason:encode-object-elements "children" '())
+      )
+    )
+    
+    ;; otherwise (in most case, a lexical node)
+    ( node
+      (.export-as-React-D3-Tree-intern (cons node nil) :converter converter)
     )
   )
 )
