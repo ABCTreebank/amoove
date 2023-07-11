@@ -8,14 +8,14 @@
 (def-suite* :amoove/to-lambda/cli :in :amoove/to-lambda)
 
 (defparameter *testdata-subcmds-raw*
-  (list (list*  '("restore-empty" "translate" "write" "-")
+  (list (list*  '("normalize-comp-root-RC" "translate" "write" "-")
                 3
         )
-        (list*  '("restore-empty" "write" "-" "translate" "write" "-")
+        (list*  '("normalize-comp-root-RC" "write" "-" "translate" "write" "-")
                 4
         )
         ;; test the default ending "write"
-        (list*  '("restore-empty" "translate")
+        (list*  '("normalize-comp-root-RC" "translate")
                 3
         )
   )

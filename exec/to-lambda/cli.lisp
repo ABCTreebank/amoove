@@ -88,28 +88,15 @@ and construct a generator yields tagged tokens."
 
               ;; match the current word
               (match subcmd
-                ;; lower #comp=1,root as much as possible
-                ;; type: ABC tree → ABC tree
-                ( "normalize-comp-root"
-                  (values 'abc2abc
-                    `(progn
-                      (setf (gethash "^normalize-comp-root" ,*v-subcmd-record*)
-                            (normalize-comp-root (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*))
-                      )
-                      (setf ,*v-subcmd-pre-state* "^normalize-comp-root")
-                    )
-                  )
-                )
-              
                 ;; restore empty categories
                 ;; type: ABC tree → ABC tree
-                ( "restore-empty"
+                ( "normalize-comp-root-RC"
                   (values 'abc2abc
                     `(progn
-                      (setf (gethash "^restore-empty" ,*v-subcmd-record*)
-                            (restore-empty (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*))
+                      (setf (gethash "^normalize-comp-root-RC" ,*v-subcmd-record*)
+                            (normalize-comp-root-RC (gethash ,*v-subcmd-pre-state* ,*v-subcmd-record*))
                       )
-                      (setf ,*v-subcmd-pre-state* "^restore-empty")
+                      (setf ,*v-subcmd-pre-state* "^normalize-comp-root-RC")
                     )
                   )
                 )
@@ -360,22 +347,21 @@ and construct a generator yields tagged tokens."
           :suffix "Specify subcmds as arguments to make a conversion pipeline. 
 
 subcmd list:
-- restore-empty (ABC → ABC)
+- normalize-comp-root-RC (ABC → ABC)
 - move-comp (ABC → ABC)
 - make-move-comp-pretty (ABC → ABC)
-- adjust-rc (ABC → ABC)
 - translate (ABC → sem)
 - reduce (sem → sem)
 
 TLDR:
 - To make LF representations:
-  restore-empty move-comp
+  normalize-comp-root-RC move-comp
 
 - To make prettified LF trees
-  restore-empty move-comp make-move-comp-pretty
+  normalize-comp-root-RC move-comp make-move-comp-pretty
 
 - To gain semantic representations:
-  restore-empty move-comp translate reduce
+  normalize-comp-root-RC move-comp translate reduce
 "
         )
       )

@@ -12,10 +12,9 @@
   (make-yori-lexspec mgl-pax:function)
   (lexspec-yori mgl-pax:symbol-macro)
 
-  (normalize-comp-root mgl-pax:function)
   (convert-prej mgl-pax:function)
   (stack-node mgl-pax:function)
-  (restore-empty mgl-pax:function)
+  (normalize-comp-root-RC mgl-pax:function)
 
   (move-comp mgl-pax:function)
   (lineralize-vars mgl-pax:function)
@@ -98,20 +97,6 @@ The format: `yori,{count of 'cont' constituents},{count of 'diff'}`
   )
 )
 
-(trivia:defpattern lexspec-yori (num-contrast num-difference)
-  (let  ( (v-item (gensym "item_"))
-          (v-item-parsed (gensym "item-parsed_"))
-        )
-    `(trivia::guard1 ,v-item (stringp ,v-item)
-      (nth-value 1 (ppcre:scan-to-strings "yori,([0-9]+),([0-9])" ,v-item) )
-      (trivia::guard1 ,v-item-parsed t
-        (parse-integer (aref ,v-item-parsed 0)) ,num-contrast
-        (parse-integer (aref ,v-item-parsed 1)) ,num-difference
-      )
-    )
-  )
-)
-
 (defun convert-prej (tree-prej cat-root-original o)
   "Type-shift a/the 'prej' (a/the prejacent/pivot constituent) of the より／と比べて comparative construction
 so that the constituent is typed with
@@ -175,21 +160,17 @@ Example:
             )
         (list ;; node rewritten
               (✑:make-annot :cat cat-prej-mod
-                            :feats (✑:get-feats node)
-              )
-              ;; np, as it is
-              np
-              ;; comp-word rewritten
-              (cons (✑:make-annot
-                      :cat cat-prej-head 
-                      :feats  (fset-user::with comp-term-node-feats
-                                "lexspec"
-                                (make-yori-lexspec o)
-                              )
-                    )
-                    words
-              )
-        )
+                            :feats (✑:get-feats node)) ;; np, as it is
+                                                        np
+                                                        ;; comp-word rewritten
+                                                        (cons (✑:make-annot
+                                                                :cat cat-prej-head 
+                                                                :feats  (fset-user::with comp-term-node-feats
+                                                                          "lexspec" (make-yori-lexspec o)
+                                                                        )
+                                                              )
+                                                              words
+                                                        ))
       )
     )
     ( otherwise tree-prej )
@@ -210,81 +191,67 @@ Example:
   )
 )
 
-(defun normalize-comp-root (tree)
-  (match tree
-    ( (guard (list (annot (✑:cat node-cat)
-                          (✑:feats node-fset))
-                   ;; only-child
-                   (cons (annot (✑:cat child-cat)
-                                (✑:feats child-feats)
-                         )
-                         child-children
-                   )
-             )
-             (and (match node-cat
-                    ( (amoove/cat:cat-str "PP\\S" _) nil )
-                    ( (amoove/cat:cat-str "NP\\S" _) nil )
-                    ( otherwise t )
-                  )
-                  (match node-fset
-                    ( (fset:map ("comp" (trivia.ppcre:ppcre "root"))) t )
-                  )
-             )
-      )
-      (list
-        (✑:make-annot 
-          :cat node-cat 
-          :feats (fset-user::with node-fset "comp" nil) ;; delete the comp 
-        )
-        (normalize-comp-root
-          (cons (✑:make-annot 
-                  :cat child-cat 
-                  :feats (fset-user::with child-feats 
-                            "comp" (fset-user::lookup node-fset "comp")
-                          ) 
-                )
-                child-children
-          )
-        )
-      )
-    )
 
-    ( (cons label children)
-      (cons label (mapcar #'normalize-comp-root children))
-    )
-
-    ( otherwise tree )
-  )
-)
-
-(defun restore-empty (tree)
-"Restore empty categories.
+(defun normalize-comp-root-RC (tree)
+"Normalize relative clauses in TREE which are the root of a comparative construction `#comp=_,root,...`.
 
 Cases:
-* <PP\\S> or <NP\\S>, #comp=INDEX,root,cont
-* <PP\S> or <NP\S>, #comp=INDEX,root
+* `{<PP\\S[rel]> or <NP\\S[rel]>}#comp=INDEX,root,...`
+    * Create a lambda binding with a trace 
+    * Make a full sentence inside, which contains:
+      * The trace with `#comp=INDEX,cont` feature
+      * The original clause
+    * Example:
+      ```
+      TREE = (PP\\S ...)
+      ```
+      ↓
+      ```
+      (<PP\\S>#deriv=bind (TRACE )
+        (S#comp=INDEX,root
+          (PP#=comp=INDEX,cont TRACE)
+          ,TREE
+        )
+      )
+      ```
+* ({<N/N> or <NP/NP>}#comp=INDEX,root (PP\\S ...))
+    * Lower the `#comp` feature
+    * Apply the same function recursively
+    * Example:
+      ```
+      TREE = (<N/N>#comp=INDEX,root (PP\\S ...))
+      ```
+      ↓
+      ```
+      RC = (PP\\S#comp=INDEX,root )
+      ```
+      in
+      ```
+      (<N/N> (normalize RC))
+      ```
+
+NOTE: Non-destructive.
 "
   (trivia::match tree
-    ;; <PP\S> or <NP\S>#comp=INDEX,root,cont
-    ( (cons (annot (✑:cat (🐈:cat
-                            (🐈:name "\\")
-                            (🐈:args (list trace-cat 
-                                           (cat-str "S" clause-cat)
-                                     )
-                            )
-                          )
+    ;; <PP\S> or <NP\S>#comp=INDEX,root,...
+    ( (guard (cons (annot (✑:cat (🐈:cat-uncurried "\\" (list trace-cat) clause-cat) )
+                          (✑:feats (comp index comp-list))
                     )
-                   (✑:feats (comp index (or (list "root" "cont")
-                                            (list "cont" "root")
-                                        )
-                            )
+                    children 
+              )
+              (and (match trace-cat 
+                      ( (🐈:cat-str "NP" (not nil)) t)
+                      ( (🐈:cat-str "PP" (not nil)) t)
                    )
-            )
-            children 
+                   (match clause-cat
+                      ( (🐈:cat-str "S[rel]" (not nil)) t)
+                   )
+                   (find "root" comp-list :test #'equal)
+              )
       )
       (let ( (symb-trace (gensym "TRACE_")) )
         ;; (PP\S#deriv=bind (symb-trace ) 
-        ;;                  ...)
+        ;;                  ... )
         (list (✑:make-annot 
                 :cat (🐈:make-cat 
                         :name "\\" 
@@ -293,90 +260,65 @@ Cases:
                 :feats (fset:map ("deriv" "bind"))
               )
               (list symb-trace)
-              (list ;; S#comp=INDEX,root
-                    (✑:make-annot 
+              ;; (S#comp=INDEX,root (NP#comp=INDEX,cont symb-trace) 
+    ;;                              (PP\S ,@children))
+              (list (✑:make-annot 
                       :cat clause-cat 
                       :feats (fset:map 
-                                ("comp" (format nil "~d,root" index))
-                              )
-                    )
-                    ;; (NP#comp=INDEX,cont symb-trace)
-                    (list (✑:make-annot
-                            :cat trace-cat
-                            :feats (fset:map 
-                                      ("comp" (format nil "~d,cont" index))
-                                    )
-                          )
-                          symb-trace
-                    )
-                    ;; (PP\S ,@children)
-                    (cons (✑:make-annot 
-                            :cat (🐈:make-cat
-                                    :name "\\"
-                                    :args (list trace-cat clause-cat)
-                                  )
-                          )
-                          (mapcar #'restore-empty children)
-                    )
-              )
+                                ("comp" (format nil "~d,root" index)))) (list (✑:make-annot
+                                                                                :cat trace-cat
+                                                                                :feats (fset:map 
+                                                                                          ("comp" (format nil "~d,cont" index))
+                                                                                        )
+                                                                              )
+                                                                              symb-trace )
+                                                                        (cons (✑:make-annot 
+                                                                                :cat (🐈:make-cat
+                                                                                        :name "\\"
+                                                                                        :args (list trace-cat clause-cat)
+                                                                                      )
+                                                                              )
+                                                                              (mapcar #'normalize-comp-root-RC children)
+                                                                        ))
         )
       )
     )
 
-    ;; <PP\S> or <NP\S>#comp=INDEX,root
-    ( (cons (annot (✑:cat (🐈:cat
-                            (🐈:name "\\")
-                            (🐈:args (list trace-cat 
-                                           (cat-str "S" clause-cat)
-                                     )
-                            )
-                          )
-                    )
-                   (✑:feats (comp index (list "root") ) )
-            )
-            children 
+    ( (guard (list (annot (✑:cat node-cat)
+                          (✑:feats node-fset)) (cons (annot (✑:cat child-cat) (✑:feats child-feats))
+                                                      child-children
+                                                ))
+             (and (match node-cat 
+                    ( (🐈:cat-str "N/N" (not nil)) t)
+                    ( (🐈:cat-str "NP/NP" (not nil)) t)
+                  )
+                  (match node-fset
+                    ( (fset:map ("comp" (trivia.ppcre:ppcre "root"))) t )
+                  )
+                  (match child-cat
+                    ((🐈:cat-str "PP\\S" (not nil)) t)
+                    ((🐈:cat-str "NP\\S" (not nil)) t)
+                  )
+             )
       )
-      (let ( (symb-trace (gensym "TRACE_")) )
-        (list ;; (PP\S#deriv=bind (symb-trace ) ...)
-              (✑:make-annot 
-                :cat (🐈:make-cat 
-                        :name "\\" 
-                        :args (list trace-cat clause-cat)
-                      )
-                :feats (fset:map ("deriv" "bind"))
+      (list (✑:make-annot :cat node-cat 
+              :feats (fset-user::with node-fset "comp" nil) ;; delete the comp 
+            )       
+            (normalize-comp-root-RC
+              (cons (✑:make-annot 
+                      :cat child-cat 
+                      :feats (fset-user::with child-feats 
+                                "comp" (fset-user::lookup node-fset "comp")
+                             )
+                    )
+                    child-children
               )
-              (list symb-trace)
-              (list ;; S#comp=INDEX,root
-                    (✑:make-annot 
-                      :cat clause-cat 
-                      :feats (fset:map 
-                                ("comp" (format nil "~d,root" index))
-                              )
-                    )
-                    ;; (PP#comp=INDEX symb-trace)
-                    (list (✑:make-annot :cat trace-cat 
-                                        :feats (fset:map 
-                                          ("comp" (format nil "~d,cont" index))
-                                        ) 
-                          ) 
-                          symb-trace 
-                    )
-                    ;; (PP\S ,@children)
-                    (cons (✑:make-annot 
-                            :cat (🐈:make-cat
-                                    :name "\\"
-                                    :args (list trace-cat clause-cat)
-                                  )
-                          )
-                          (mapcar #'restore-empty children)
-                    )
-              )
-        )
+            )
       )
     )
-            
+
     ( (cons node children)
-      (cons node (mapcar #'restore-empty children))
+      (cons node (mapcar #'normalize-comp-root-RC children))
     )
     
     ( otherwise tree )
