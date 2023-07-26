@@ -147,6 +147,16 @@
         `(:λ (,v-x) ,v-x)
       )
     )
+
+    ;; -----------
+    ;; Case markers
+    ;; -----------
+    ( (list (annot (✑:cat (🐈:cat-uncurried "\\" (list (cat-str "NP" (not nil))) _))) 
+            (trivia.ppcre:ppcre "(が|を)" _))
+      (let ( (v-x (gensym "X_")))
+        `(:λ (,v-x) ,v-x)
+      )
+    )
     
     ;; ------------
     ;; Punctuations (default)
