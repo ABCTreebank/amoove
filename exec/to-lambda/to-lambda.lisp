@@ -165,6 +165,20 @@
     )
     
     ;; ------------
+    ;; Passivilizers
+    ;; ------------
+    ( (🌿 (annot (✑:cat (🐈:cat-str "<PP[o1]\\PP[s]\\S>\\<PP[s]\\S>" (not nil))))
+          (trivia.ppcre:ppcre "ら?れる")
+      )
+      (let  ( (v-p (gensym "P_"))
+              (v-patient (gensym "PATIENT_"))
+              (v-pro-lgs (gensym "PRO_LOGICAL_SBJ_"))
+            )
+        `(:λ (,v-p ,v-patient) (,v-p ,v-patient ,v-pro-lgs))
+      )
+    )
+    
+    ;; ------------
     ;; Punctuations (default)
     ;; ------------
     ( (🌿 (annot (✑:cat (🐈:cat-adjunct _ _) ) )
