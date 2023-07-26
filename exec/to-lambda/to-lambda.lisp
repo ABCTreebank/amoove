@@ -7,6 +7,12 @@
   (to-lambda mgl-pax:function)
 )
 
+(trivia:defpattern 🌳 ( &rest r ) 
+  `(list ,@r)
+)
+(trivia:defpattern 🌿 ( &rest r ) 
+  `(list ,@r)
+)
 
 (defun to-lambda (item)
   "Translate a ABC Treebank tree to a semantic expression in the λ-calculus langauge in a top-down recursive way."
@@ -20,7 +26,7 @@
     ;; Subjunctive coordinators
     ;; ------------
     ;; ので
-    ( (list (annot (✑:cat (🐈:cat-str "S\\<S/S>" (not nil)))) "ので")
+    ( (🌿 (annot (✑:cat (🐈:cat-str "S\\<S/S>" (not nil)))) "ので")
       (let  ( (v-s1 (gensym "S1_"))
               (v-s2 (gensym "S2_"))
             )
@@ -28,7 +34,7 @@
       )
     )
 
-    ( (list (annot (✑:cat (🐈:cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" (not nil)))) "ので")
+    ( (🌿 (annot (✑:cat (🐈:cat-str "<PP[s]\\S>\\<<PP[s]\\S>/<PP[s]\\S>>" (not nil)))) "ので")
       (let  ( (v-sbj (gensym "SBJ_"))
               (v-s1 (gensym "S1_"))
               (v-s2 (gensym "S2_"))
@@ -38,7 +44,7 @@
     )
 
     ;; ;; vacuous て
-    ;; ( (list (annot (✑:cat (cat-adjunct _ _)) )
+    ;; ( (🌿 (annot (✑:cat (cat-adjunct _ _)) )
     ;;         "て"
     ;;   )
     ;;   (let ( (v-x (gensym "X_")))
@@ -46,13 +52,13 @@
     ;;   )
     ;; )
 
-    ( (list (annot (✑:cat (🐈:cat-adjunct _ (cat-str "S" (not nil)))) ) "た")
+    ( (🌿 (annot (✑:cat (🐈:cat-adjunct _ (cat-str "S" (not nil)))) ) "た")
       (let ( (v-x (gensym "X_")))
         `(:λ (,v-x) (:PAST ,v-x) )
       )
     )
 
-    ( (list (annot (✑:cat (🐈:cat-adjunct "\\" (cat-str "PP\\S" (not nil))))) "あげ")
+    ( (🌿 (annot (✑:cat (🐈:cat-adjunct "\\" (cat-str "PP\\S" (not nil))))) "あげ")
       (let ( (v-verb (gensym "VERB_"))
              (v-sbj (gensym "SBJ_"))
             )
@@ -105,7 +111,7 @@
     
     ;; the fallback lexical rule
     ;; the eta-expanding version:
-    ;; ( (guard  (list (annot (✑:cat (cat-uncurried-ignore-functors args conseq)))
+    ;; ( (guard  (🌿 (annot (✑:cat (cat-uncurried-ignore-functors args conseq)))
     ;;                 w
     ;;           ) 
     ;;           (stringp w)
@@ -130,7 +136,7 @@
     ;; -----------
     ;; Conjunction heads
     ;; -----------
-    ( (list (annot (✑:cat (🐈:cat-adjunct _ _))  ;; TODO: add type checking
+    ( (🌿 (annot (✑:cat (🐈:cat-adjunct _ _))  ;; TODO: add type checking
                    (✑:feats (fset:map ("lexspec" "conj-bin-head") ) ) 
             ) _)
       (let  ( (v-x1 (gensym "X1_"))
@@ -140,7 +146,7 @@
       )
     )
 
-    ( (list (annot (✑:cat (🐈:cat-adjunct _ _)) 
+    ( (🌿 (annot (✑:cat (🐈:cat-adjunct _ _)) 
                    (✑:feats (fset:map ("lexspec" "conj-bin-orphan-head") ) ) ) _)
       (let  ( (v-x (gensym "X1_"))
             )
@@ -151,8 +157,8 @@
     ;; -----------
     ;; Case markers
     ;; -----------
-    ( (list (annot (✑:cat (🐈:cat-uncurried "\\" (list (cat-str "NP" (not nil))) _))) 
-            (trivia.ppcre:ppcre "(が|を)" _))
+    ( (🌿 (annot (✑:cat (🐈:cat-uncurried "\\" (🌳 (cat-str "NP" (not nil))) _))) 
+          (trivia.ppcre:ppcre "(が|を|に|と)" _))
       (let ( (v-x (gensym "X_")))
         `(:λ (,v-x) ,v-x)
       )
@@ -161,7 +167,7 @@
     ;; ------------
     ;; Punctuations (default)
     ;; ------------
-    ( (list (annot (✑:cat (🐈:cat-adjunct _ _) ) )
+    ( (🌿 (annot (✑:cat (🐈:cat-adjunct _ _) ) )
             (trivia.ppcre:ppcre
                 "^[!%,\-\.\?~·―\’“”…−、。〈〉《》「」『』【】〔〕〜・！＆（），－．／：；＜＝＞？［］｝～｡｢｣･ー]+$"
             )
@@ -171,15 +177,15 @@
       )
     )
     
-    ( (guard (list _ w) (stringp w) ) w )
-    ( (guard (list _ w) (symbolp w) ) w )
+    ( (guard (🌿 _ w) (stringp w) ) w )
+    ( (guard (🌿 _ w) (symbolp w) ) w )
     
     ;; ============
     ;; Binary branching rules
     ;; ============
     
     ;; slash introduction aka "bind"
-    ( (list (annot (✑:feats (fset::map ("deriv" "bind"))))
+    ( (🌳 (annot (✑:feats (fset::map ("deriv" "bind"))))
             vars
             base
       )
@@ -188,7 +194,7 @@
 
     ;; slash elmination
     ( (guard 
-        (list (annot (✑:feats feats) )
+        (🌳 (annot (✑:feats feats) )
               (cons (annot (✑:cat cat1) ) _ )
               (cons (annot (✑:cat cat2) ) _ )
         )
@@ -278,7 +284,7 @@
 
     ;; (NP (N _))
     ;; → (:THE (N _))
-    ( (list (annot (✑:cat (🐈:cat-str "NP" (not nil))) )
+    ( (🌳 (annot (✑:cat (🐈:cat-str "NP" (not nil))) )
             (cons (annot (✑:cat (🐈:cat-str "N" (not nil))))
                   _
             )
@@ -289,7 +295,7 @@
     ;; (Ns\N (NUM _))
     ;; → λ(v-q2, v-f).
     ;;      v-q2 $ λv-x. (NUM _) $ λv-y. (:AND (:QUANT v-x v-y) (v-f v-x) )
-    ( (list (annot (✑:cat (🐈:cat-str "Ns\\N" (not nil))))
+    ( (🌳 (annot (✑:cat (🐈:cat-str "Ns\\N" (not nil))))
             (cons (annot (✑:cat (🐈:cat-str "NUM" (not nil)))) 
                   _
             )
@@ -311,7 +317,7 @@
       )
     )
 
-    ( (list (annot (✑:cat (or (🐈:cat-str "N/N" (not nil))
+    ( (🌳 (annot (✑:cat (or (🐈:cat-str "N/N" (not nil))
                               (🐈:cat-str "NP/NP" (not nil))
                             )
                    )
@@ -338,13 +344,13 @@
 
     ;; the fallback rule
     ;; just remove the branching
-    ( (list _ child) (to-lambda child) )
+    ( (🌳 _ child) (to-lambda child) )
 
     ;; ============
     ;; Zero branching
     ;; ============
     ;; just remove the branching
-    ( (list child) (to-lambda child) )
+    ( (🌳 child) (to-lambda child) )
     
     ;; ============
     ;; Ternary or more branching
