@@ -847,6 +847,7 @@ The function returns a pair of the tree without comments and the comments teased
           (if is-multi-lines
             ;; https://stackoverflow.com/a/24758778
             (format output-stream "~%~v@{~c~:*~}" indent #\ )
+            (format output-stream " ")
           )
           (pprint-tree child1
             :converter converter
