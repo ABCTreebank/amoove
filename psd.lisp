@@ -734,7 +734,7 @@ The function returns a pair of the tree without comments and the comments teased
 (declaim (ftype (function * null) pprint-tree))
 (defun pprint-tree  ( tree
                       &key
-                      (converter (lambda (i) i) )
+                      (converter #'identity)
                       (output-stream *standard-output*)
                       (id nil)
                       (indent 0)
@@ -907,8 +907,7 @@ The function returns a pair of the tree without comments and the comments teased
   )
 )
 
-(defun .export-as-React-D3-Tree-intern (tree &key (converter (lambda (i) i))
-                                )
+(defun .export-as-React-D3-Tree-intern (tree &key (converter #'identity))
   (trivia:match tree
     ;; a subtree with no node
     ( (cons (type cons) _)
