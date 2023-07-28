@@ -1,5 +1,5 @@
 (defpackage :amoove/test/cat
-  (:use :cl :fiveam)
+  (:use :cl :fiveam :iterate)
   (:import-from :amoove/cat 
       :make-cat
       :parse-cat-abc
@@ -11,6 +11,16 @@
 )
 (in-package :amoove/test/cat)
 (def-suite* :amoove/cat :in :amoove)
+
+(defparameter *restore-cat-abc-brackets-list*
+  (list (list* "CPq-ADV-Depictive" "CP[q][adv][depic]")
+  )
+)
+(test restore-cat-abc-brackets
+  (iter (for (input . output) in *restore-cat-abc-brackets-list*)
+    (is (equal (amoove/cat:restore-cat-abc-brackets input) output))
+  )
+)
 
 (defparameter *cat-abc-tokenize-list*
   (list (list*  "Sm"

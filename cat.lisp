@@ -594,9 +594,65 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
 )
 
 (mgl-pax:defsection @parse (:title "Parsing")
+  (desugar-cat-abc mgl-pax:function)
+  (restore-cat-abc-brackets mgl-pax:function)
   (tokenize-cat-abc mgl-pax:function)
   (*parser-cat-abc* (mgl-pax:variable YACC-PARSER))
   (parse-cat-abc mgl-pax:function)
+)
+
+(declaim (ftype (function (string) string )
+                desugar-cat-abc
+         )
+)
+(function-cache:defcached desugar-cat-abc (input)
+  (iter
+    (trivia:match input
+      ( (trivia.ppcre:ppcre "^(.*)``_([A-Za-z]+)''(.*)$" b item e)
+        (setq input (format nil "~A<<~A/~A>\\<~A/~A>>~A" b item item item item e))
+      )
+
+      ( (trivia.ppcre:ppcre "^(.*)([A-Za-z]+)''(.*)$" b item e)
+        (setq input (format nil "~A<~A/~A>~A" b item item e))
+      )
+
+      ( (trivia.ppcre:ppcre "^(.*)``([A-Za-z]+)(.*)$" b item e)
+        (setq input (format nil "~A<~A\\~A>~A" b item item e))
+      )
+
+      ( (trivia.ppcre:ppcre "^(.*)VP([a-z]+)(.*)$" b item e)
+        (setq input (format nil "~A<PP[s]\\S\~A>~A" b item e))
+      )
+
+      ( otherwise (return input))
+    )
+  )
+)
+
+(declaim (ftype (function (string) string )
+                restore-cat-abc-brackets
+         )
+)
+(function-cache:defcached restore-cat-abc-brackets (input)
+  (trivia:match input
+    ( (trivia.ppcre:ppcre "^([A-Z]+)([a-z0-9]+)(.*)$" c feat rest) 
+      (restore-cat-abc-brackets (format nil "~A[~A]~A" c feat rest))
+    )
+
+    ( (trivia.ppcre:ppcre "^(.+)-Depictive(.*)$" c rest)
+      (restore-cat-abc-brackets (format nil "~A[depic]~A" c rest))
+    )
+    
+    ( (trivia.ppcre:ppcre "^(.+)-([a-zA-Z]+)(.*)$" c feat rest)
+      (restore-cat-abc-brackets (format nil "~A[~A]~A" c (string-downcase feat) rest))
+    )
+
+    ( (trivia.ppcre:ppcre "^(.*)-([a-zA-Z]+)(.*)$" c feat rest)
+      (restore-cat-abc-brackets (format nil "~A[~A]~A" c (string-downcase feat) rest))
+    )
+
+    ( otherwise input )
+  )
 )
 
 (declaim (ftype (function (string)
