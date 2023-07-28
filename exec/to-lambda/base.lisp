@@ -56,7 +56,11 @@
 )
 
 (defparameter *parse-abc-cat-annoted*
-  (✑::make-parser :cat-parser 🐈::parse-cat-abc)
+  (✑::make-parser 
+    :cat-parser (lambda (x) 
+                        (🐈:parse-cat-abc (🐈:restore-cat-abc-brackets (🐈:desugar-cat-abc x)))
+                )
+  )
   "The parser of ABC categories with meta features."
 )
 
