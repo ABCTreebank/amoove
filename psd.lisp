@@ -888,7 +888,7 @@ The function returns a pair of the tree without comments and the comments teased
 (defun export-as-React-D3-Tree  (tree &key 
                                   (id nil)
                                   (converter (lambda (i) i))
-                                  (output-stream *output-stream*)
+                                  (output-stream *standard-output*)
                                 )
   (yason:with-output (output-stream)
     (cond 
