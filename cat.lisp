@@ -599,7 +599,16 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
   (parse-cat-abc mgl-pax:function)
 )
 
+(declaim (ftype (function (string)
+                          ; returns
+                          (function () (values (or symbol null) 
+                                               (or character string null)) )
+                )
+                tokenize-cat-abc
+         )
+)
 (defun tokenize-cat-abc (input)
+"Construct a generator tokenizing INPUT, which represents an ABC category."
   (let*           ( (input-length (length input))
                     (pointer-begin 0)
                     (pointer-end 0)
