@@ -76,8 +76,7 @@ Usage: `(cat-unify other-cat unified)`
 )
 
 (trivia:defpattern cat-str (str maybe-unified)
-  (let  ( (item (gensym "item_"))
-          (cat-parsed (parse-cat-abc str))
+  (let  ( (cat-parsed (parse-cat-abc str))
         )
     `(cat-unify ,cat-parsed ,maybe-unified)
   )
@@ -138,6 +137,7 @@ If NAME-P is T, the first found functor is used."
           )
           (multiple-value-bind  (unc-name unc-args unc-conseq)
                                 (uncurry-cat conseq :name-p name-p)
+            (declare (ignore unc-name))
             ;; (format *error-output* "X ~a ~a ~%" args conseq)
             (values name (cons ant unc-args) unc-conseq)
           )
@@ -154,6 +154,7 @@ If NAME-P is T, the first found functor is used."
                                 ;; use the functor name
                                 (uncurry-cat conseq :name-p name)
             ;; (format *error-output* "X ~a ~a ~%" args conseq)
+            (declare (ignore unc-name))
             (values name (cons ant unc-args) unc-conseq)
           )
         )
@@ -169,6 +170,7 @@ If NAME-P is T, the first found functor is used."
                                 ;; use the functor name
                                 (uncurry-cat conseq :name-p nil)
             ;; (format *error-output* "X ~a ~a ~%" args conseq)
+            (declare (ignore unc-name))
             (values name (cons ant unc-args) unc-conseq)
           )
         )
@@ -538,10 +540,7 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
       (trivia::match pointer
         ( nil (return ) )
         ;; if pointer is a left-functor
-        ( (cat :name "\\" 
-                :args (list ant conseq) 
-                :feats fset:empty-map
-          )
+        ( (cat :name "\\" :args (list ant conseq))
           (push #\> stack)
           (push conseq stack)
           (push #\\ stack)
@@ -551,7 +550,6 @@ or a functional application on CAT-LEFT and CAT-RIGHT.
         ;; if pointer is a functor of other types
         ( (cat :name name
                 :args (list ant conseq) 
-                :feats fset:empty-map
           )
           (push #\> stack)
           (push ant stack)
